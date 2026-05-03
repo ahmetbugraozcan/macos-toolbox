@@ -59,6 +59,7 @@ struct ScreenshotShelfView: View {
                 thumbnailSize: thumbnailSize,
                 closeAction: { store.remove(item) },
                 copyAction: { store.copy(item) },
+                copyTextAction: { store.copyRecognizedText(item) },
                 pinAction: { store.togglePin(item) },
                 openAction: { store.openInPreview(item) }
             )
@@ -78,6 +79,7 @@ private struct ScreenshotThumbnailView: View {
     let thumbnailSize: CGSize
     let closeAction: () -> Void
     let copyAction: () -> Void
+    let copyTextAction: () -> Void
     let pinAction: () -> Void
     let openAction: () -> Void
 
@@ -146,6 +148,39 @@ private struct ScreenshotThumbnailView: View {
             width: ScreenshotShelfView.cardSize(for: thumbnailSize).width,
             height: ScreenshotShelfView.cardSize(for: thumbnailSize).height
         )
+        .contextMenu {
+            Button {
+                copyAction()
+            } label: {
+                Label("Copy Image", systemImage: "doc.on.doc")
+            }
+
+            Button {
+                copyTextAction()
+            } label: {
+                Label("Copy Text", systemImage: "text.viewfinder")
+            }
+
+            Button {
+                openAction()
+            } label: {
+                Label("Edit in Preview", systemImage: "pencil")
+            }
+
+            Button {
+                pinAction()
+            } label: {
+                Label(item.isPinned ? "Unpin" : "Pin", systemImage: item.isPinned ? "pin.slash" : "pin")
+            }
+
+            Divider()
+
+            Button(role: .destructive) {
+                closeAction()
+            } label: {
+                Label("Close", systemImage: "xmark")
+            }
+        }
     }
 }
 

@@ -11,6 +11,7 @@ final class ScreenshotShelfStore: ObservableObject {
     private var expirationTimers: [UUID: DispatchWorkItem] = [:]
     private var expirationTimerTokens: [UUID: UUID] = [:]
     private var autoHideConfiguration: AutoHideConfiguration?
+    private var toastController: ToastPanelController?
     private lazy var panelController = ScreenshotShelfPanelController(store: self)
 
     init() {
@@ -66,6 +67,27 @@ final class ScreenshotShelfStore: ObservableObject {
         }
     }
 
+    func captureOCRTextFromSelectedArea() {
+        guard !isCapturing else { return }
+        guard ScreenRecordingPermissionService.ensureAccess() else {
+            showScreenRecordingPermissionHelp()
+            return
+        }
+
+        isCapturing = true
+        ScreenshotCaptureService.captureSelectedArea(preserveClipboard: true) { [weak self] result in
+            guard let self else { return }
+
+            switch result {
+            case .success(let image):
+                recognizeAndCopyText(from: image)
+            case .failure(let error):
+                isCapturing = false
+                handleCaptureFailure(error)
+            }
+        }
+    }
+
     func remove(_ item: ScreenshotItem) {
         removeScreenshot(withID: item.id)
     }
@@ -74,6 +96,17 @@ final class ScreenshotShelfStore: ObservableObject {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.writeObjects([item.image])
+    }
+
+    func copyRecognizedText(_ item: ScreenshotItem) {
+        OCRTextRecognitionService.recognizeText(in: item.image) { result in
+            switch result {
+            case .success(let text):
+                self.copyTextToPasteboard(text)
+            case .failure(let error):
+                self.handleOCRFailure(error)
+            }
+        }
     }
 
     func openInPreview(_ item: ScreenshotItem) {
@@ -123,6 +156,55 @@ final class ScreenshotShelfStore: ObservableObject {
 
         panelController.refresh(screenAnchor: screenAnchor)
         startExpirationTimerIfNeeded(for: item, settings: settings)
+    }
+
+    private func recognizeAndCopyText(from image: NSImage) {
+        OCRTextRecognitionService.recognizeText(in: image) { [weak self] result in
+            guard let self else { return }
+
+            isCapturing = false
+
+            switch result {
+            case .success(let text):
+                copyTextToPasteboard(text)
+            case .failure(let error):
+                handleOCRFailure(error)
+            }
+        }
+    }
+
+    private func copyTextToPasteboard(_ text: String) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+
+        guard pasteboard.setString(text, forType: .string) else {
+            NSSound.beep()
+            showToast("Could not copy text", systemImage: "exclamationmark.triangle.fill")
+            return
+        }
+
+        showToast("Copied to clipboard")
+    }
+
+    private func handleOCRFailure(_ error: Error) {
+        NSSound.beep()
+
+        if let recognitionError = error as? OCRTextRecognitionError {
+            switch recognitionError {
+            case .noTextFound:
+                showToast("No text found", systemImage: "exclamationmark.triangle.fill")
+            case .imageConversionFailed:
+                showToast("Could not read image", systemImage: "exclamationmark.triangle.fill")
+            }
+        } else {
+            showToast("OCR failed", systemImage: "exclamationmark.triangle.fill")
+        }
+    }
+
+    private func showToast(_ message: String, systemImage: String = "checkmark.circle.fill") {
+        let controller = toastController ?? ToastPanelController()
+        toastController = controller
+        controller.show(message: message, systemImage: systemImage)
     }
 
     private func trimToMaxStackCount(_ maxStackCount: Int) -> [UUID] {

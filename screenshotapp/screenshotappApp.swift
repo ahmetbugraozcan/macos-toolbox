@@ -27,6 +27,13 @@ struct screenshotappApp: App {
             }
             .disabled(screenshotStore.isCapturing)
 
+            Button {
+                screenshotStore.captureOCRTextFromSelectedArea()
+            } label: {
+                Label("Capture OCR", systemImage: "text.viewfinder")
+            }
+            .disabled(screenshotStore.isCapturing)
+
             Divider()
 
             Button {
