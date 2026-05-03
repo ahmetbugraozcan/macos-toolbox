@@ -37,6 +37,22 @@ struct screenshotappApp: App {
             Divider()
 
             Button {
+                screenshotStore.copyAll()
+            } label: {
+                Label("Copy All", systemImage: "doc.on.doc")
+            }
+            .disabled(screenshotStore.screenshots.isEmpty)
+
+            Button(role: .destructive) {
+                screenshotStore.clearAll()
+            } label: {
+                Label("Clear All", systemImage: "trash")
+            }
+            .disabled(screenshotStore.screenshots.isEmpty)
+
+            Divider()
+
+            Button {
                 NSApp.activate(ignoringOtherApps: true)
                 openSettings()
             } label: {

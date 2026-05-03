@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct ScreenshotShelfView: View {
@@ -61,7 +62,8 @@ struct ScreenshotShelfView: View {
                 copyAction: { store.copy(item) },
                 copyTextAction: { store.copyRecognizedText(item) },
                 pinAction: { store.togglePin(item) },
-                openAction: { store.openInPreview(item) }
+                openAction: { store.openInPreview(item) },
+                dragProvider: { store.dragItemProvider(for: item) }
             )
         }
     }
@@ -82,6 +84,7 @@ private struct ScreenshotThumbnailView: View {
     let copyTextAction: () -> Void
     let pinAction: () -> Void
     let openAction: () -> Void
+    let dragProvider: () -> NSItemProvider
 
     var body: some View {
         ZStack {
@@ -180,6 +183,9 @@ private struct ScreenshotThumbnailView: View {
             } label: {
                 Label("Close", systemImage: "xmark")
             }
+        }
+        .onDrag {
+            dragProvider()
         }
     }
 }

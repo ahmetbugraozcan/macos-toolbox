@@ -98,6 +98,30 @@ final class ScreenshotShelfStore: ObservableObject {
         pasteboard.writeObjects([item.image])
     }
 
+    func copyAll() {
+        guard !screenshots.isEmpty else {
+            return
+        }
+
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+
+        guard pasteboard.writeObjects(screenshots.map(\.image)) else {
+            NSSound.beep()
+            return
+        }
+    }
+
+    func clearAll() {
+        guard !screenshots.isEmpty else {
+            return
+        }
+
+        cancelAllExpirationTimers()
+        screenshots.removeAll()
+        panelController.refresh()
+    }
+
     func copyRecognizedText(_ item: ScreenshotItem) {
         OCRTextRecognitionService.recognizeText(in: item.image) { result in
             switch result {
@@ -106,6 +130,19 @@ final class ScreenshotShelfStore: ObservableObject {
             case .failure(let error):
                 self.handleOCRFailure(error)
             }
+        }
+    }
+
+    func dragItemProvider(for item: ScreenshotItem) -> NSItemProvider {
+        do {
+            let url = try TemporaryPNGWriter.write(item.image)
+            let provider = NSItemProvider(contentsOf: url) ?? NSItemProvider()
+            provider.suggestedName = url.deletingPathExtension().lastPathComponent
+
+            return provider
+        } catch {
+            NSSound.beep()
+            return NSItemProvider()
         }
     }
 
