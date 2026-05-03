@@ -1,0 +1,279 @@
+import AppKit
+import Combine
+import KeyboardShortcuts
+
+@MainActor
+final class ScreenshotShelfStore: ObservableObject {
+    @Published private(set) var screenshots: [ScreenshotItem] = []
+    @Published private(set) var isCapturing = false
+
+    private var defaultsObserver: AnyCancellable?
+    private var expirationTimers: [UUID: DispatchWorkItem] = [:]
+    private var expirationTimerTokens: [UUID: UUID] = [:]
+    private var autoHideConfiguration: AutoHideConfiguration?
+    private lazy var panelController = ScreenshotShelfPanelController(store: self)
+
+    init() {
+        ScreenshotShelfSettings.registerDefaults()
+        autoHideConfiguration = AutoHideConfiguration(settings: ScreenshotShelfSettings.snapshot())
+        defaultsObserver = NotificationCenter.default.publisher(
+            for: UserDefaults.didChangeNotification,
+            object: UserDefaults.standard
+        )
+        .receive(on: RunLoop.main)
+        .sink { [weak self] _ in
+            Task { @MainActor in
+                self?.applySettingsChange()
+            }
+        }
+
+        KeyboardShortcuts.removeHandler(for: .captureSelectedArea)
+        KeyboardShortcuts.onKeyUp(for: .captureSelectedArea) { [weak self] in
+            Task { @MainActor in
+                self?.captureSelectedArea()
+            }
+        }
+    }
+
+    deinit {
+        KeyboardShortcuts.removeHandler(for: .captureSelectedArea)
+        expirationTimers.values.forEach { $0.cancel() }
+    }
+
+    func captureSelectedArea() {
+        guard !isCapturing else { return }
+        guard ScreenRecordingPermissionService.ensureAccess() else {
+            showScreenRecordingPermissionHelp()
+            return
+        }
+
+        isCapturing = true
+        let settings = ScreenshotShelfSettings.snapshot()
+        let screenAnchor = panelController.screenAnchorForNewCapture(settings: settings)
+        ScreenshotCaptureService.captureSelectedArea(
+            preserveClipboard: !settings.copyCapturedScreenshotToClipboard
+        ) { [weak self] result in
+            guard let self else { return }
+
+            isCapturing = false
+
+            switch result {
+            case .success(let image):
+                add(image, screenAnchor: screenAnchor)
+            case .failure(let error):
+                handleCaptureFailure(error)
+            }
+        }
+    }
+
+    func remove(_ item: ScreenshotItem) {
+        removeScreenshot(withID: item.id)
+    }
+
+    func copy(_ item: ScreenshotItem) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.writeObjects([item.image])
+    }
+
+    func openInPreview(_ item: ScreenshotItem) {
+        do {
+            let url = try TemporaryPNGWriter.write(item.image)
+            let configuration = NSWorkspace.OpenConfiguration()
+            let previewURL = URL(fileURLWithPath: "/System/Applications/Preview.app")
+
+            NSWorkspace.shared.open(
+                [url],
+                withApplicationAt: previewURL,
+                configuration: configuration
+            )
+        } catch {
+            NSSound.beep()
+        }
+    }
+
+    func togglePin(_ item: ScreenshotItem) {
+        guard let index = screenshots.firstIndex(where: { $0.id == item.id }) else {
+            return
+        }
+
+        var updatedScreenshots = screenshots
+        let wasPinned = updatedScreenshots[index].isPinned
+        updatedScreenshots[index].isPinned.toggle()
+        let updatedItem = updatedScreenshots[index]
+        screenshots = updatedScreenshots
+        panelController.refresh()
+
+        if updatedItem.isPinned {
+            cancelExpirationTimer(for: updatedItem.id)
+        } else if wasPinned {
+            startExpirationTimerIfNeeded(for: updatedItem)
+        }
+    }
+
+    private func add(_ image: NSImage, screenAnchor: ScreenshotShelfScreenAnchor?) {
+        let settings = ScreenshotShelfSettings.snapshot()
+        let item = ScreenshotItem(
+            image: image,
+            isPinned: settings.pinScreenshotsByDefault
+        )
+
+        screenshots.insert(item, at: 0)
+        cancelExpirationTimers(for: trimToMaxStackCount(settings.maxStackCount))
+
+        panelController.refresh(screenAnchor: screenAnchor)
+        startExpirationTimerIfNeeded(for: item, settings: settings)
+    }
+
+    private func trimToMaxStackCount(_ maxStackCount: Int) -> [UUID] {
+        guard screenshots.count > maxStackCount else {
+            return []
+        }
+
+        let overflowCount = screenshots.count - maxStackCount
+        let removedIDs = screenshots.suffix(overflowCount).map(\.id)
+        screenshots.removeLast(overflowCount)
+
+        return removedIDs
+    }
+
+    private func applySettingsChange() {
+        let settings = ScreenshotShelfSettings.snapshot()
+        cancelExpirationTimers(for: trimToMaxStackCount(settings.maxStackCount))
+        panelController.refreshIfVisible()
+        reconcileExpirationTimers(settings: settings)
+    }
+
+    private func handleCaptureFailure(_ error: ScreenshotCaptureError) {
+        if case .cancelled = error {
+            return
+        }
+
+        if error.isLikelyPermissionProblem || !ScreenRecordingPermissionService.hasAccess {
+            showScreenRecordingPermissionHelp()
+        } else {
+            NSSound.beep()
+        }
+    }
+
+    private func showScreenRecordingPermissionHelp() {
+        PermissionAlertPresenter.showScreenRecordingHelp {
+            ScreenRecordingPermissionService.openSettings()
+        }
+    }
+
+    private func startExpirationTimerIfNeeded(for item: ScreenshotItem) {
+        startExpirationTimerIfNeeded(for: item, settings: ScreenshotShelfSettings.snapshot())
+    }
+
+    private func startExpirationTimerIfNeeded(
+        for item: ScreenshotItem,
+        settings: ScreenshotShelfSettingsSnapshot
+    ) {
+        guard !item.isPinned, !settings.neverAutoHide else {
+            return
+        }
+
+        cancelExpirationTimer(for: item.id)
+
+        let itemID = item.id
+        let timerToken = UUID()
+        let workItem = DispatchWorkItem { [weak self] in
+            Task { @MainActor in
+                self?.expireScreenshot(withID: itemID, timerToken: timerToken)
+            }
+        }
+
+        expirationTimers[itemID] = workItem
+        expirationTimerTokens[itemID] = timerToken
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + .seconds(settings.previewDurationSeconds),
+            execute: workItem
+        )
+    }
+
+    private func expireScreenshot(withID itemID: UUID, timerToken: UUID) {
+        guard expirationTimerTokens[itemID] == timerToken else {
+            return
+        }
+
+        expirationTimers[itemID] = nil
+        expirationTimerTokens[itemID] = nil
+
+        guard let item = screenshots.first(where: { $0.id == itemID }) else {
+            return
+        }
+
+        let settings = ScreenshotShelfSettings.snapshot()
+        guard !settings.neverAutoHide, !item.isPinned else {
+            return
+        }
+
+        screenshots.removeAll { $0.id == itemID }
+        panelController.refresh()
+    }
+
+    private func removeScreenshot(withID itemID: UUID) {
+        cancelExpirationTimer(for: itemID)
+
+        let oldCount = screenshots.count
+        screenshots.removeAll { $0.id == itemID }
+
+        guard screenshots.count != oldCount else {
+            return
+        }
+
+        panelController.refresh()
+    }
+
+    private func reconcileExpirationTimers(settings: ScreenshotShelfSettingsSnapshot) {
+        let configuration = AutoHideConfiguration(settings: settings)
+        let configurationChanged = autoHideConfiguration != configuration
+        autoHideConfiguration = configuration
+
+        let currentIDs = Set(screenshots.map(\.id))
+        let staleIDs = expirationTimers.keys.filter { !currentIDs.contains($0) }
+        cancelExpirationTimers(for: staleIDs)
+
+        if settings.neverAutoHide {
+            cancelAllExpirationTimers()
+            return
+        }
+
+        for item in screenshots {
+            if item.isPinned {
+                cancelExpirationTimer(for: item.id)
+            } else if configurationChanged || expirationTimers[item.id] == nil {
+                startExpirationTimerIfNeeded(for: item, settings: settings)
+            }
+        }
+    }
+
+    private func cancelExpirationTimer(for itemID: UUID) {
+        expirationTimers[itemID]?.cancel()
+        expirationTimers[itemID] = nil
+        expirationTimerTokens[itemID] = nil
+    }
+
+    private func cancelExpirationTimers<S: Sequence>(for itemIDs: S) where S.Element == UUID {
+        for itemID in itemIDs {
+            cancelExpirationTimer(for: itemID)
+        }
+    }
+
+    private func cancelAllExpirationTimers() {
+        expirationTimers.values.forEach { $0.cancel() }
+        expirationTimers.removeAll()
+        expirationTimerTokens.removeAll()
+    }
+}
+
+private struct AutoHideConfiguration: Equatable {
+    let previewDurationSeconds: Int
+    let neverAutoHide: Bool
+
+    init(settings: ScreenshotShelfSettingsSnapshot) {
+        previewDurationSeconds = settings.previewDurationSeconds
+        neverAutoHide = settings.neverAutoHide
+    }
+}

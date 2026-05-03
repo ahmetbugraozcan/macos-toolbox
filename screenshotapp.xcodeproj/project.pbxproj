@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		AAD0A208E4D24B549E556B07 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 6203C44E9BC14AC1B9720AF2 /* KeyboardShortcuts */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		120AAC8D2FA603A4004E3432 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -24,7 +28,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		120AAC7F2FA603A2004E3432 /* screenshotapp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = screenshotapp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		120AAC7F2FA603A2004E3432 /* TinyShotShelf.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TinyShotShelf.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		120AAC8C2FA603A4004E3432 /* screenshotappTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = screenshotappTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		120AAC962FA603A4004E3432 /* screenshotappUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = screenshotappUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -52,6 +56,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AAD0A208E4D24B549E556B07 /* KeyboardShortcuts in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -85,7 +90,7 @@
 		120AAC802FA603A2004E3432 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				120AAC7F2FA603A2004E3432 /* screenshotapp.app */,
+				120AAC7F2FA603A2004E3432 /* TinyShotShelf.app */,
 				120AAC8C2FA603A4004E3432 /* screenshotappTests.xctest */,
 				120AAC962FA603A4004E3432 /* screenshotappUITests.xctest */,
 			);
@@ -112,9 +117,10 @@
 			);
 			name = screenshotapp;
 			packageProductDependencies = (
+				6203C44E9BC14AC1B9720AF2 /* KeyboardShortcuts */,
 			);
-			productName = screenshotapp;
-			productReference = 120AAC7F2FA603A2004E3432 /* screenshotapp.app */;
+			productName = TinyShotShelf;
+			productReference = 120AAC7F2FA603A2004E3432 /* TinyShotShelf.app */;
 			productType = "com.apple.product-type.application";
 		};
 		120AAC8B2FA603A4004E3432 /* screenshotappTests */ = {
@@ -195,6 +201,9 @@
 			);
 			mainGroup = 120AAC762FA603A2004E3432;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				41C9677DFDA545799232FE9E /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 120AAC802FA603A2004E3432 /* Products */;
 			projectDirPath = "";
@@ -398,11 +407,14 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 2T78BG3872;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = TinyShotShelf;
+				INFOPLIST_KEY_CFBundleName = TinyShotShelf;
+				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -410,7 +422,8 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ahmetbugraozcan.screenshotapp;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_MODULE_NAME = screenshotapp;
+				PRODUCT_NAME = TinyShotShelf;
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -430,11 +443,14 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 2T78BG3872;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = TinyShotShelf;
+				INFOPLIST_KEY_CFBundleName = TinyShotShelf;
+				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -442,7 +458,8 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ahmetbugraozcan.screenshotapp;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_MODULE_NAME = screenshotapp;
+				PRODUCT_NAME = TinyShotShelf;
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -470,7 +487,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/screenshotapp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/screenshotapp";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TinyShotShelf.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/TinyShotShelf";
 			};
 			name = Debug;
 		};
@@ -491,7 +508,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/screenshotapp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/screenshotapp";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TinyShotShelf.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/TinyShotShelf";
 			};
 			name = Release;
 		};
@@ -573,6 +590,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		41C9677DFDA545799232FE9E /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sindresorhus/KeyboardShortcuts";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.4.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		6203C44E9BC14AC1B9720AF2 /* KeyboardShortcuts */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 41C9677DFDA545799232FE9E /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */;
+			productName = KeyboardShortcuts;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 120AAC772FA603A2004E3432 /* Project object */;
 }
