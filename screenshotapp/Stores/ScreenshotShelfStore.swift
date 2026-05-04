@@ -133,16 +133,13 @@ final class ScreenshotShelfStore: ObservableObject {
         }
     }
 
-    func dragItemProvider(for item: ScreenshotItem) -> NSItemProvider {
+    func draggingPasteboardWriter(for item: ScreenshotItem) -> NSPasteboardWriting? {
         do {
             let url = try TemporaryPNGWriter.write(item.image)
-            let provider = NSItemProvider(contentsOf: url) ?? NSItemProvider()
-            provider.suggestedName = url.deletingPathExtension().lastPathComponent
-
-            return provider
+            return url as NSURL
         } catch {
             NSSound.beep()
-            return NSItemProvider()
+            return nil
         }
     }
 
@@ -179,6 +176,27 @@ final class ScreenshotShelfStore: ObservableObject {
         } else if wasPinned {
             startExpirationTimerIfNeeded(for: updatedItem)
         }
+    }
+
+    func moveScreenshot(withID draggedID: UUID, toDestinationIndex destinationIndex: Int) {
+        guard canMoveScreenshot(withID: draggedID, toDestinationIndex: destinationIndex),
+              let sourceIndex = screenshots.firstIndex(where: { $0.id == draggedID }) else {
+            return
+        }
+
+        let item = screenshots.remove(at: sourceIndex)
+        let clampedDestinationIndex = min(max(destinationIndex, 0), screenshots.count)
+        screenshots.insert(item, at: clampedDestinationIndex)
+        panelController.refresh()
+    }
+
+    func canMoveScreenshot(withID draggedID: UUID, toDestinationIndex destinationIndex: Int) -> Bool {
+        guard let sourceIndex = screenshots.firstIndex(where: { $0.id == draggedID }) else {
+            return false
+        }
+
+        let clampedDestinationIndex = min(max(destinationIndex, 0), screenshots.count - 1)
+        return clampedDestinationIndex != sourceIndex
     }
 
     private func add(_ image: NSImage, screenAnchor: ScreenshotShelfScreenAnchor?) {
