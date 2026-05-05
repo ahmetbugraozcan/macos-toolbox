@@ -143,6 +143,17 @@ final class ScreenshotShelfStore: ObservableObject {
         }
     }
 
+    func saveAs(_ item: ScreenshotItem) {
+        save(
+            item,
+            suggestedFilename: ScreenshotExportNaming.timestampedFilename(for: item.createdAt)
+        )
+    }
+
+    func save(_ item: ScreenshotItem, exportOption: ScreenshotExportOption) {
+        save(item, suggestedFilename: exportOption.filename)
+    }
+
     func openInPreview(_ item: ScreenshotItem) {
         do {
             let url = try TemporaryPNGWriter.write(item.image)
@@ -197,6 +208,22 @@ final class ScreenshotShelfStore: ObservableObject {
 
         let clampedDestinationIndex = min(max(destinationIndex, 0), screenshots.count - 1)
         return clampedDestinationIndex != sourceIndex
+    }
+
+    private func save(_ item: ScreenshotItem, suggestedFilename: String) {
+        do {
+            guard let url = try ScreenshotExportService.save(
+                item.image,
+                suggestedFilename: suggestedFilename
+            ) else {
+                return
+            }
+
+            showToast("Saved \(url.lastPathComponent)")
+        } catch {
+            NSSound.beep()
+            showToast("Could not save image", systemImage: "exclamationmark.triangle.fill")
+        }
     }
 
     private func add(_ image: NSImage, screenAnchor: ScreenshotShelfScreenAnchor?) {

@@ -2,7 +2,7 @@ import AppKit
 
 enum TemporaryPNGWriter {
     static func write(_ image: NSImage) throws -> URL {
-        guard let pngData = image.pngData() else {
+        guard let pngData = image.tinyShotShelfPNGData else {
             throw CocoaError(.fileWriteUnknown)
         }
 
@@ -13,8 +13,8 @@ enum TemporaryPNGWriter {
     }
 }
 
-private extension NSImage {
-    func pngData() -> Data? {
+extension NSImage {
+    var tinyShotShelfPNGData: Data? {
         guard
             let tiffData = tiffRepresentation,
             let bitmap = NSBitmapImageRep(data: tiffData)

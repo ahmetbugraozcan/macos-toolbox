@@ -93,6 +93,8 @@ enum ScreenshotShelfSettings {
         static let copyCapturedScreenshotToClipboard = "copyCapturedScreenshotToClipboard"
         static let thumbnailSize = "thumbnailSize"
         static let customThumbnailWidth = "customThumbnailWidth"
+        static let exportFilenamePrefix = "exportFilenamePrefix"
+        static let exportFilenameVariants = "exportFilenameVariants"
     }
 
     static let maxStackCountRange = 1...10
@@ -109,6 +111,8 @@ enum ScreenshotShelfSettings {
     static let defaultCopyCapturedScreenshotToClipboard = false
     static let defaultThumbnailSize = ShelfThumbnailSize.medium
     static let defaultCustomThumbnailWidth = 220
+    static let defaultExportFilenamePrefix = ScreenshotExportNaming.defaultPrefix
+    static let defaultExportFilenameVariants = ScreenshotExportNaming.defaultVariants
 
     static func registerDefaults(in defaults: UserDefaults = .standard) {
         defaults.register(defaults: [
@@ -121,7 +125,9 @@ enum ScreenshotShelfSettings {
             Keys.showPreviewsOnFocusedDisplay: defaultShowPreviewsOnFocusedDisplay,
             Keys.copyCapturedScreenshotToClipboard: defaultCopyCapturedScreenshotToClipboard,
             Keys.thumbnailSize: defaultThumbnailSize.rawValue,
-            Keys.customThumbnailWidth: defaultCustomThumbnailWidth
+            Keys.customThumbnailWidth: defaultCustomThumbnailWidth,
+            Keys.exportFilenamePrefix: defaultExportFilenamePrefix,
+            Keys.exportFilenameVariants: defaultExportFilenameVariants
         ])
     }
 

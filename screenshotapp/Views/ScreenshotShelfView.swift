@@ -16,6 +16,12 @@ struct ScreenshotShelfView: View {
     @AppStorage(ScreenshotShelfSettings.Keys.customThumbnailWidth)
     private var customThumbnailWidth = ScreenshotShelfSettings.defaultCustomThumbnailWidth
 
+    @AppStorage(ScreenshotShelfSettings.Keys.exportFilenamePrefix)
+    private var exportFilenamePrefix = ScreenshotShelfSettings.defaultExportFilenamePrefix
+
+    @AppStorage(ScreenshotShelfSettings.Keys.exportFilenameVariants)
+    private var exportFilenameVariants = ScreenshotShelfSettings.defaultExportFilenameVariants
+
     var body: some View {
         ScrollView(scrollAxis, showsIndicators: false) {
             shelfContent
@@ -36,6 +42,13 @@ struct ScreenshotShelfView: View {
         let customWidth = ScreenshotShelfSettings.clampedCustomThumbnailWidth(customThumbnailWidth)
 
         return size.size(customWidth: customWidth)
+    }
+
+    private var exportOptions: [ScreenshotExportOption] {
+        ScreenshotExportNaming.options(
+            prefix: exportFilenamePrefix,
+            variants: exportFilenameVariants
+        )
     }
 
     private var scrollAxis: Axis.Set {
@@ -97,9 +110,12 @@ struct ScreenshotShelfView: View {
                 closeAction: { store.remove(item) },
                 copyAction: { store.copy(item) },
                 copyTextAction: { store.copyRecognizedText(item) },
+                saveAsAction: { store.saveAs(item) },
+                saveExportAction: { option in store.save(item, exportOption: option) },
                 pinAction: { store.togglePin(item) },
                 openAction: { store.openInPreview(item) },
                 dragPasteboardWriter: { store.draggingPasteboardWriter(for: item) },
+                exportOptions: exportOptions,
                 screenFrameChanged: { itemID, frame in
                     updateThumbnailScreenFrame(itemID: itemID, frame: frame)
                 },
@@ -387,9 +403,12 @@ private struct ScreenshotThumbnailView: View {
     let closeAction: () -> Void
     let copyAction: () -> Void
     let copyTextAction: () -> Void
+    let saveAsAction: () -> Void
+    let saveExportAction: (ScreenshotExportOption) -> Void
     let pinAction: () -> Void
     let openAction: () -> Void
     let dragPasteboardWriter: () -> NSPasteboardWriting?
+    let exportOptions: [ScreenshotExportOption]
     let screenFrameChanged: (UUID, CGRect?) -> Void
     let reorderChanged: (ScreenshotDragUpdate) -> Void
     let reorderEnded: (ScreenshotDragUpdate, Bool) -> Void
@@ -477,6 +496,26 @@ private struct ScreenshotThumbnailView: View {
                 openAction()
             } label: {
                 Label("Edit in Preview", systemImage: "pencil")
+            }
+
+            Menu {
+                ForEach(exportOptions) { option in
+                    Button {
+                        saveExportAction(option)
+                    } label: {
+                        Label(option.filename, systemImage: "square.and.arrow.down")
+                    }
+                }
+
+                Divider()
+
+                Button {
+                    saveAsAction()
+                } label: {
+                    Label("Save As...", systemImage: "square.and.arrow.down")
+                }
+            } label: {
+                Label("Save", systemImage: "square.and.arrow.down")
             }
 
             Button {

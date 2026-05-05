@@ -32,6 +32,12 @@ struct SettingsView: View {
     @AppStorage(ScreenshotShelfSettings.Keys.customThumbnailWidth)
     private var customThumbnailWidth = ScreenshotShelfSettings.defaultCustomThumbnailWidth
 
+    @AppStorage(ScreenshotShelfSettings.Keys.exportFilenamePrefix)
+    private var exportFilenamePrefix = ScreenshotShelfSettings.defaultExportFilenamePrefix
+
+    @AppStorage(ScreenshotShelfSettings.Keys.exportFilenameVariants)
+    private var exportFilenameVariants = ScreenshotShelfSettings.defaultExportFilenameVariants
+
     var body: some View {
         TabView {
             previewPane
@@ -47,6 +53,11 @@ struct SettingsView: View {
             capturePane
                 .tabItem {
                     Label("Capture", systemImage: "camera.viewfinder")
+                }
+
+            exportPane
+                .tabItem {
+                    Label("Export", systemImage: "square.and.arrow.down")
                 }
 
             hotkeyPane
@@ -144,6 +155,30 @@ struct SettingsView: View {
         }
     }
 
+    private var exportPane: some View {
+        SettingsPane {
+            Form {
+                Section("Naming") {
+                    TextField("Prefix", text: $exportFilenamePrefix)
+                        .textFieldStyle(.roundedBorder)
+
+                    TextField("Variants", text: $exportFilenameVariants)
+                        .textFieldStyle(.roundedBorder)
+                }
+
+                Section("Generated names") {
+                    ForEach(exportOptions) { option in
+                        LabeledContent(option.variant ?? "Default") {
+                            Text(option.filename)
+                                .monospaced()
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private var hotkeyPane: some View {
         SettingsPane {
             Form {
@@ -164,6 +199,13 @@ struct SettingsView: View {
     private var customThumbnailHeight: Int {
         let width = ScreenshotShelfSettings.clampedCustomThumbnailWidth(customThumbnailWidth)
         return Int(ShelfThumbnailSize.size(forWidth: CGFloat(width)).height)
+    }
+
+    private var exportOptions: [ScreenshotExportOption] {
+        ScreenshotExportNaming.options(
+            prefix: exportFilenamePrefix,
+            variants: exportFilenameVariants
+        )
     }
 
     private func clampNumericSettings() {
