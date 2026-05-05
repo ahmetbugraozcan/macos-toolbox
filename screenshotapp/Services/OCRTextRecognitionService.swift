@@ -2,6 +2,14 @@ import AppKit
 import Vision
 
 enum OCRTextRecognitionService {
+    static func recognizeText(in image: NSImage) async throws -> String {
+        try await withCheckedThrowingContinuation { continuation in
+            recognizeText(in: image) { result in
+                continuation.resume(with: result)
+            }
+        }
+    }
+
     static func recognizeText(
         in image: NSImage,
         completion: @escaping (Result<String, Error>) -> Void

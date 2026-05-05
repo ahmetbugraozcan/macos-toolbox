@@ -11,6 +11,7 @@ import SwiftUI
 @main
 struct screenshotappApp: App {
     @Environment(\.openSettings) private var openSettings
+    @Environment(\.openWindow) private var openWindow
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var screenshotStore = ScreenshotShelfStore()
 
@@ -54,6 +55,15 @@ struct screenshotappApp: App {
 
             Button {
                 NSApp.activate(ignoringOtherApps: true)
+                openWindow(id: "image-search")
+            } label: {
+                Label("Search Images", systemImage: "magnifyingglass")
+            }
+
+            Divider()
+
+            Button {
+                NSApp.activate(ignoringOtherApps: true)
                 openSettings()
             } label: {
                 Label("Settings", systemImage: "gearshape")
@@ -69,6 +79,11 @@ struct screenshotappApp: App {
         Settings {
             SettingsView()
         }
+
+        Window("Image Search", id: "image-search") {
+            ImageTextSearchView()
+        }
+        .defaultSize(width: 720, height: 500)
     }
 }
 
