@@ -40,6 +40,11 @@ struct SettingsView: View {
 
     var body: some View {
         TabView {
+            toolsPane
+                .tabItem {
+                    Label("Tools", systemImage: "wrench.and.screwdriver")
+                }
+
             previewPane
                 .tabItem {
                     Label("Preview", systemImage: "rectangle.on.rectangle")
@@ -75,6 +80,28 @@ struct SettingsView: View {
         }
         .onChange(of: customThumbnailWidth) { _, newValue in
             customThumbnailWidth = ScreenshotShelfSettings.clampedCustomThumbnailWidth(newValue)
+        }
+    }
+
+    private var toolsPane: some View {
+        SettingsPane {
+            VStack(alignment: .leading, spacing: 18) {
+                ToolCategorySection(
+                    title: "Screenshots",
+                    tools: [.captureSelectedArea, .captureOCR]
+                )
+
+                ToolCategorySection(
+                    title: "Files",
+                    tools: [.copyFinderPath]
+                )
+
+                ToolCategorySection(
+                    title: "Search",
+                    tools: [.imageSearch]
+                )
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -224,6 +251,109 @@ private struct SettingsPane<Content: View>: View {
                 .formStyle(.grouped)
                 .padding(.horizontal, 28)
                 .padding(.vertical, 22)
+        }
+    }
+}
+
+private struct ToolCategorySection: View {
+    let title: String
+    let tools: [ToolboxToolID]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            Text(title)
+                .font(.headline)
+                .foregroundStyle(.primary)
+                .padding(.horizontal, 4)
+
+            VStack(spacing: 10) {
+                ForEach(tools) { tool in
+                    ToolSettingsRow(tool: tool)
+                }
+            }
+        }
+    }
+}
+
+private struct ToolSettingsRow: View {
+    let tool: ToolboxToolID
+    @AppStorage private var isEnabled: Bool
+    @AppStorage private var showInMenu: Bool
+
+    init(tool: ToolboxToolID) {
+        self.tool = tool
+        _isEnabled = AppStorage(wrappedValue: tool.defaultEnabled, tool.enabledKey)
+        _showInMenu = AppStorage(wrappedValue: tool.defaultShowInMenu, tool.showInMenuKey)
+    }
+
+    private var enabledBinding: Binding<Bool> {
+        Binding {
+            isEnabled
+        } set: { newValue in
+            isEnabled = newValue
+
+            if !newValue {
+                showInMenu = false
+            }
+        }
+    }
+
+    private var showInMenuBinding: Binding<Bool> {
+        Binding {
+            isEnabled && showInMenu
+        } set: { newValue in
+            showInMenu = isEnabled && newValue
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 11) {
+            HStack(alignment: .center, spacing: 12) {
+                Image(systemName: tool.systemImage)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(isEnabled ? Color.accentColor : Color.secondary)
+                    .frame(width: 34, height: 34)
+                    .background(.quaternary.opacity(0.55), in: RoundedRectangle(cornerRadius: 8))
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(tool.title)
+                        .font(.system(size: 14, weight: .semibold))
+
+                    Text(tool.subtitle)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer()
+
+                Toggle("", isOn: enabledBinding)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+            }
+
+            HStack(spacing: 12) {
+                Text("Show in menu")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(isEnabled ? .secondary : .tertiary)
+
+                Spacer()
+
+                Toggle("", isOn: showInMenuBinding)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+            }
+            .padding(.leading, 46)
+            .disabled(!isEnabled)
+        }
+        .padding(14)
+        .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 12))
+        .opacity(isEnabled ? 1 : 0.58)
+        .animation(.snappy(duration: 0.16), value: isEnabled)
+        .onChange(of: isEnabled) { _, newValue in
+            if !newValue {
+                showInMenu = false
+            }
         }
     }
 }

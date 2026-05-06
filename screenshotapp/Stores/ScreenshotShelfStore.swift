@@ -16,6 +16,7 @@ final class ScreenshotShelfStore: ObservableObject {
 
     init() {
         ScreenshotShelfSettings.registerDefaults()
+        ToolboxSettings.registerDefaults()
         autoHideConfiguration = AutoHideConfiguration(settings: ScreenshotShelfSettings.snapshot())
         defaultsObserver = NotificationCenter.default.publisher(
             for: UserDefaults.didChangeNotification,
@@ -42,6 +43,7 @@ final class ScreenshotShelfStore: ObservableObject {
     }
 
     func captureSelectedArea() {
+        guard ToolboxSettings.isEnabled(.captureSelectedArea) else { return }
         guard !isCapturing else { return }
         guard ScreenRecordingPermissionService.ensureAccess() else {
             showScreenRecordingPermissionHelp()
@@ -68,6 +70,7 @@ final class ScreenshotShelfStore: ObservableObject {
     }
 
     func captureOCRTextFromSelectedArea() {
+        guard ToolboxSettings.isEnabled(.captureOCR) else { return }
         guard !isCapturing else { return }
         guard ScreenRecordingPermissionService.ensureAccess() else {
             showScreenRecordingPermissionHelp()
@@ -120,6 +123,24 @@ final class ScreenshotShelfStore: ObservableObject {
         cancelAllExpirationTimers()
         screenshots.removeAll()
         panelController.refresh()
+    }
+
+    func copyFrontFinderPath() {
+        guard ToolboxSettings.isEnabled(.copyFinderPath) else { return }
+
+        do {
+            let path = try FinderPathService.frontFinderWindowPath()
+            copyPathToPasteboard(path)
+        } catch FinderPathService.FinderPathError.noOpenFinderWindow {
+            NSSound.beep()
+            showToast("No Finder window open", systemImage: "exclamationmark.triangle.fill")
+        } catch FinderPathService.FinderPathError.automationDenied {
+            NSSound.beep()
+            showToast("Allow Finder access", systemImage: "exclamationmark.triangle.fill")
+        } catch {
+            NSSound.beep()
+            showToast("Could not copy path", systemImage: "exclamationmark.triangle.fill")
+        }
     }
 
     func copyRecognizedText(_ item: ScreenshotItem) {
@@ -266,6 +287,19 @@ final class ScreenshotShelfStore: ObservableObject {
         }
 
         showToast("Copied to clipboard")
+    }
+
+    private func copyPathToPasteboard(_ path: String) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+
+        guard pasteboard.setString(path, forType: .string) else {
+            NSSound.beep()
+            showToast("Could not copy path", systemImage: "exclamationmark.triangle.fill")
+            return
+        }
+
+        showToast("Path copied")
     }
 
     private func handleOCRFailure(_ error: Error) {
