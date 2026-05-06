@@ -1,5 +1,26 @@
 import Foundation
 
+enum ToolboxMenuLayout: String, CaseIterable, Identifiable {
+    case expanded
+    case grouped
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .expanded: "Expanded"
+        case .grouped: "Grouped"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .expanded: "Show tools directly in the menu."
+        case .grouped: "Show module menus with nested actions."
+        }
+    }
+}
+
 enum ToolboxToolID: String, CaseIterable, Identifiable {
     case captureSelectedArea
     case captureOCR
@@ -37,9 +58,8 @@ enum ToolboxToolID: String, CaseIterable, Identifiable {
 
     var categoryTitle: String {
         switch self {
-        case .captureSelectedArea, .captureOCR: "Screenshots"
+        case .captureSelectedArea, .captureOCR, .imageSearch: "Screenshots"
         case .copyFinderPath: "Files"
-        case .imageSearch: "Search"
         }
     }
 
@@ -82,6 +102,7 @@ enum ToolboxToolID: String, CaseIterable, Identifiable {
 
 enum ToolboxSettings {
     enum Keys {
+        static let menuLayout = "toolbox.menuLayout"
         static let captureSelectedAreaEnabled = "tool.captureSelectedArea.enabled"
         static let captureSelectedAreaShowInMenu = "tool.captureSelectedArea.showInMenu"
         static let captureOCREnabled = "tool.captureOCR.enabled"
@@ -92,6 +113,7 @@ enum ToolboxSettings {
         static let imageSearchShowInMenu = "tool.imageSearch.showInMenu"
     }
 
+    static let defaultMenuLayout = ToolboxMenuLayout.expanded
     static let defaultCaptureSelectedAreaEnabled = true
     static let defaultCaptureSelectedAreaShowInMenu = true
     static let defaultCaptureOCREnabled = true
@@ -103,6 +125,7 @@ enum ToolboxSettings {
 
     static func registerDefaults(in defaults: UserDefaults = .standard) {
         defaults.register(defaults: [
+            Keys.menuLayout: defaultMenuLayout.rawValue,
             Keys.captureSelectedAreaEnabled: defaultCaptureSelectedAreaEnabled,
             Keys.captureSelectedAreaShowInMenu: defaultCaptureSelectedAreaShowInMenu,
             Keys.captureOCREnabled: defaultCaptureOCREnabled,

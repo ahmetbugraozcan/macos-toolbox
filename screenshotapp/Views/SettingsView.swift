@@ -38,6 +38,9 @@ struct SettingsView: View {
     @AppStorage(ScreenshotShelfSettings.Keys.exportFilenameVariants)
     private var exportFilenameVariants = ScreenshotShelfSettings.defaultExportFilenameVariants
 
+    @AppStorage(ToolboxSettings.Keys.menuLayout)
+    private var menuLayoutRaw = ToolboxSettings.defaultMenuLayout.rawValue
+
     var body: some View {
         TabView {
             toolsPane
@@ -86,19 +89,16 @@ struct SettingsView: View {
     private var toolsPane: some View {
         SettingsPane {
             VStack(alignment: .leading, spacing: 18) {
+                MenuLayoutSection(selection: $menuLayoutRaw)
+
                 ToolCategorySection(
                     title: "Screenshots",
-                    tools: [.captureSelectedArea, .captureOCR]
+                    tools: [.captureSelectedArea, .captureOCR, .imageSearch]
                 )
 
                 ToolCategorySection(
                     title: "Files",
                     tools: [.copyFinderPath]
-                )
-
-                ToolCategorySection(
-                    title: "Search",
-                    tools: [.imageSearch]
                 )
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -249,9 +249,55 @@ private struct SettingsPane<Content: View>: View {
         ScrollView {
             content
                 .formStyle(.grouped)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
                 .padding(.horizontal, 28)
                 .padding(.vertical, 22)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
         }
+    }
+}
+
+private struct MenuLayoutSection: View {
+    @Binding var selection: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            Text("Menu")
+                .font(.headline)
+                .foregroundStyle(.primary)
+                .padding(.horizontal, 4)
+
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 16) {
+                    Text("Menu layout")
+                        .font(.system(size: 13, weight: .medium))
+
+                    Spacer()
+
+                    Picker("Menu layout", selection: $selection) {
+                        ForEach(ToolboxMenuLayout.allCases) { layout in
+                            Text(layout.title).tag(layout.rawValue)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.segmented)
+                    .fixedSize(horizontal: true, vertical: false)
+                }
+                .frame(maxWidth: .infinity)
+
+                Text(selectedLayout.description)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 12))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var selectedLayout: ToolboxMenuLayout {
+        ToolboxMenuLayout(rawValue: selection) ?? ToolboxSettings.defaultMenuLayout
     }
 }
 

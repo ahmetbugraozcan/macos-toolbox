@@ -14,6 +14,8 @@ struct screenshotappApp: App {
     @Environment(\.openWindow) private var openWindow
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var screenshotStore = ScreenshotShelfStore()
+    @AppStorage(ToolboxSettings.Keys.menuLayout)
+    private var menuLayoutRaw = ToolboxSettings.defaultMenuLayout.rawValue
     @AppStorage(ToolboxSettings.Keys.captureSelectedAreaEnabled)
     private var captureSelectedAreaEnabled = ToolboxSettings.defaultCaptureSelectedAreaEnabled
     @AppStorage(ToolboxSettings.Keys.captureSelectedAreaShowInMenu)
@@ -38,86 +40,14 @@ struct screenshotappApp: App {
 
     var body: some Scene {
         MenuBarExtra("TinyShotShelf", systemImage: "camera.viewfinder") {
-            if shouldShowScreenshotsMenu {
-                Menu {
-                    if shouldShowCaptureSelectedAreaInMenu {
-                        Button {
-                            screenshotStore.captureSelectedArea()
-                        } label: {
-                            Label(
-                                ToolboxToolID.captureSelectedArea.title,
-                                systemImage: ToolboxToolID.captureSelectedArea.systemImage
-                            )
-                        }
-                        .disabled(screenshotStore.isCapturing)
-                    }
-
-                    if shouldShowCaptureOCRInMenu {
-                        Button {
-                            screenshotStore.captureOCRTextFromSelectedArea()
-                        } label: {
-                            Label(ToolboxToolID.captureOCR.title, systemImage: ToolboxToolID.captureOCR.systemImage)
-                        }
-                        .disabled(screenshotStore.isCapturing)
-                    }
-
-                    if shouldShowCaptureSelectedAreaInMenu || shouldShowCaptureOCRInMenu {
-                        Divider()
-                    }
-
-                    Button {
-                        screenshotStore.copyAll()
-                    } label: {
-                        Label("Copy All", systemImage: "doc.on.doc")
-                    }
-                    .disabled(screenshotStore.screenshots.isEmpty)
-
-                    Button(role: .destructive) {
-                        screenshotStore.clearAll()
-                    } label: {
-                        Label("Clear All", systemImage: "trash")
-                    }
-                    .disabled(screenshotStore.screenshots.isEmpty)
-                } label: {
-                    Label("Screenshots", systemImage: "camera.viewfinder")
-                }
-
-                Divider()
+            switch selectedMenuLayout {
+            case .expanded:
+                expandedMenuContent
+            case .grouped:
+                groupedMenuContent
             }
 
-            if shouldShowCopyFinderPathInMenu {
-                Button {
-                    screenshotStore.copyFrontFinderPath()
-                } label: {
-                    Label(ToolboxToolID.copyFinderPath.title, systemImage: ToolboxToolID.copyFinderPath.systemImage)
-                }
-
-                Divider()
-            }
-
-            if shouldShowImageSearchInMenu {
-                Button {
-                    NSApp.activate(ignoringOtherApps: true)
-                    openWindow(id: "image-search")
-                } label: {
-                    Label(ToolboxToolID.imageSearch.title, systemImage: ToolboxToolID.imageSearch.systemImage)
-                }
-
-                Divider()
-            }
-
-            Button {
-                NSApp.activate(ignoringOtherApps: true)
-                openSettings()
-            } label: {
-                Label("Settings", systemImage: "gearshape")
-            }
-
-            Divider()
-
-            Button("Quit TinyShotShelf") {
-                NSApp.terminate(nil)
-            }
+            appMenuFooter
         }
 
         Settings {
@@ -130,10 +60,147 @@ struct screenshotappApp: App {
         .defaultSize(width: 720, height: 500)
     }
 
-    private var shouldShowScreenshotsMenu: Bool {
+    @ViewBuilder
+    private var expandedMenuContent: some View {
+        if shouldShowScreenshotActionsInMenu {
+            menuSectionHeader("Screenshots")
+            screenshotToolButtons
+
+            if hasVisibleScreenshotTools {
+                Divider()
+            }
+
+            screenshotShelfButtons
+
+            Divider()
+        }
+
+        if shouldShowCopyFinderPathInMenu {
+            menuSectionHeader("Files")
+            copyFinderPathButton
+            Divider()
+        }
+    }
+
+    @ViewBuilder
+    private var groupedMenuContent: some View {
+        if shouldShowScreenshotActionsInMenu {
+            Menu {
+                screenshotToolButtons
+
+                if hasVisibleScreenshotTools {
+                    Divider()
+                }
+
+                screenshotShelfButtons
+            } label: {
+                Label("Screenshots", systemImage: "camera.viewfinder")
+            }
+
+            Divider()
+        }
+
+        if shouldShowCopyFinderPathInMenu {
+            copyFinderPathButton
+            Divider()
+        }
+    }
+
+    @ViewBuilder
+    private var screenshotToolButtons: some View {
+        if shouldShowCaptureSelectedAreaInMenu {
+            Button {
+                screenshotStore.captureSelectedArea()
+            } label: {
+                Label(
+                    ToolboxToolID.captureSelectedArea.title,
+                    systemImage: ToolboxToolID.captureSelectedArea.systemImage
+                )
+            }
+            .disabled(screenshotStore.isCapturing)
+        }
+
+        if shouldShowCaptureOCRInMenu {
+            Button {
+                screenshotStore.captureOCRTextFromSelectedArea()
+            } label: {
+                Label(ToolboxToolID.captureOCR.title, systemImage: ToolboxToolID.captureOCR.systemImage)
+            }
+            .disabled(screenshotStore.isCapturing)
+        }
+
+        if shouldShowImageSearchInMenu {
+            Button {
+                NSApp.activate(ignoringOtherApps: true)
+                openWindow(id: "image-search")
+            } label: {
+                Label(ToolboxToolID.imageSearch.title, systemImage: ToolboxToolID.imageSearch.systemImage)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var screenshotShelfButtons: some View {
+        Button {
+            screenshotStore.copyAll()
+        } label: {
+            Label("Copy All", systemImage: "doc.on.doc")
+        }
+        .disabled(screenshotStore.screenshots.isEmpty)
+
+        Button(role: .destructive) {
+            screenshotStore.clearAll()
+        } label: {
+            Label("Clear All", systemImage: "trash")
+        }
+        .disabled(screenshotStore.screenshots.isEmpty)
+    }
+
+    private var copyFinderPathButton: some View {
+        Button {
+            screenshotStore.copyFrontFinderPath()
+        } label: {
+            Label(ToolboxToolID.copyFinderPath.title, systemImage: ToolboxToolID.copyFinderPath.systemImage)
+        }
+    }
+
+    @ViewBuilder
+    private var appMenuFooter: some View {
+        Button {
+            NSApp.activate(ignoringOtherApps: true)
+            openSettings()
+        } label: {
+            Label("Settings", systemImage: "gearshape")
+        }
+
+        Divider()
+
+        Button("Quit TinyShotShelf") {
+            NSApp.terminate(nil)
+        }
+    }
+
+    private var selectedMenuLayout: ToolboxMenuLayout {
+        ToolboxMenuLayout(rawValue: menuLayoutRaw) ?? ToolboxSettings.defaultMenuLayout
+    }
+
+    private func menuSectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .textCase(.uppercase)
+            .disabled(true)
+    }
+
+    private var shouldShowScreenshotActionsInMenu: Bool {
+        hasVisibleScreenshotTools
+            || !screenshotStore.screenshots.isEmpty
+    }
+
+    private var hasVisibleScreenshotTools: Bool {
         shouldShowCaptureSelectedAreaInMenu
             || shouldShowCaptureOCRInMenu
-            || !screenshotStore.screenshots.isEmpty
+            || shouldShowImageSearchInMenu
     }
 
     private var shouldShowCaptureSelectedAreaInMenu: Bool {
