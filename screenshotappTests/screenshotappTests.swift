@@ -1,17 +1,21 @@
-//
-//  screenshotappTests.swift
-//  screenshotappTests
-//
-//  Created by Ahmet Buğra Özcan on 2.05.2026.
-//
-
+import Foundation
 import Testing
 @testable import screenshotapp
 
 struct screenshotappTests {
 
-    @Test func example() async throws {
-        // Write your test here and use APIs like `#expect(...)` to check expected conditions.
+    @Test func screenshotSettingsRegisterAutoSaveDefaults() throws {
+        let suiteName = "ScreenshotShelfSettingsTests-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+
+        ScreenshotShelfSettings.registerDefaults(in: defaults)
+        let snapshot = ScreenshotShelfSettings.snapshot(from: defaults)
+
+        #expect(snapshot.autoSaveCapturedScreenshots)
+        #expect(snapshot.saveDirectoryPath == ScreenshotShelfSettings.defaultSaveDirectoryPath)
+
+        defaults.removePersistentDomain(forName: suiteName)
     }
 
 }

@@ -1,3 +1,4 @@
+import AppKit
 import KeyboardShortcuts
 import SwiftUI
 
@@ -32,6 +33,12 @@ struct SettingsView: View {
     @AppStorage(ScreenshotShelfSettings.Keys.customThumbnailWidth)
     private var customThumbnailWidth = ScreenshotShelfSettings.defaultCustomThumbnailWidth
 
+    @AppStorage(ScreenshotShelfSettings.Keys.autoSaveCapturedScreenshots)
+    private var autoSaveCapturedScreenshots = ScreenshotShelfSettings.defaultAutoSaveCapturedScreenshots
+
+    @AppStorage(ScreenshotShelfSettings.Keys.saveDirectoryPath)
+    private var saveDirectoryPath = ScreenshotShelfSettings.defaultSaveDirectoryPath
+
     @AppStorage(ScreenshotShelfSettings.Keys.exportFilenamePrefix)
     private var exportFilenamePrefix = ScreenshotShelfSettings.defaultExportFilenamePrefix
 
@@ -41,39 +48,31 @@ struct SettingsView: View {
     @AppStorage(ToolboxSettings.Keys.menuLayout)
     private var menuLayoutRaw = ToolboxSettings.defaultMenuLayout.rawValue
 
+    @State private var selectedSection: SettingsSection? = .screenshots
+
     var body: some View {
-        TabView {
-            toolsPane
-                .tabItem {
-                    Label("Tools", systemImage: "wrench.and.screwdriver")
+        NavigationSplitView {
+            List(selection: $selectedSection) {
+                Section("App") {
+                    ForEach(SettingsSection.appSections) { section in
+                        Label(section.title, systemImage: section.systemImage)
+                            .tag(section)
+                    }
                 }
 
-            previewPane
-                .tabItem {
-                    Label("Preview", systemImage: "rectangle.on.rectangle")
+                Section("Features") {
+                    ForEach(SettingsSection.featureSections) { section in
+                        Label(section.title, systemImage: section.systemImage)
+                            .tag(section)
+                    }
                 }
-
-            behaviorPane
-                .tabItem {
-                    Label("Behavior", systemImage: "slider.horizontal.3")
-                }
-
-            capturePane
-                .tabItem {
-                    Label("Capture", systemImage: "camera.viewfinder")
-                }
-
-            exportPane
-                .tabItem {
-                    Label("Export", systemImage: "square.and.arrow.down")
-                }
-
-            hotkeyPane
-                .tabItem {
-                    Label("Hotkey", systemImage: "keyboard")
-                }
+            }
+            .listStyle(.sidebar)
+            .navigationSplitViewColumnWidth(min: 150, ideal: 170)
+        } detail: {
+            selectedPane
         }
-        .frame(width: 560, height: 420)
+        .frame(width: 720, height: 500)
         .onAppear(perform: clampNumericSettings)
         .onChange(of: maxStackCount) { _, newValue in
             maxStackCount = ScreenshotShelfSettings.clampedMaxStackCount(newValue)
@@ -86,29 +85,35 @@ struct SettingsView: View {
         }
     }
 
-    private var toolsPane: some View {
-        SettingsPane {
-            VStack(alignment: .leading, spacing: 18) {
-                MenuLayoutSection(selection: $menuLayoutRaw)
-
-                ToolCategorySection(
-                    title: "Screenshots",
-                    tools: [.captureSelectedArea, .captureOCR, .imageSearch]
-                )
-
-                ToolCategorySection(
-                    title: "Files",
-                    tools: [.copyFinderPath]
-                )
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+    @ViewBuilder
+    private var selectedPane: some View {
+        switch selectedSection ?? .screenshots {
+        case .menuBar:
+            menuBarPane
+        case .screenshots:
+            screenshotsPane
+        case .finderPath:
+            finderPathPane
+        case .shortcuts:
+            shortcutsPane
         }
     }
 
-    private var previewPane: some View {
-        SettingsPane {
+    private var menuBarPane: some View {
+        SettingsPage(title: "Menu Bar", systemImage: "menubar.rectangle") {
+            MenuLayoutSection(selection: $menuLayoutRaw)
+        }
+    }
+
+    private var screenshotsPane: some View {
+        SettingsPage(title: "Screenshots", systemImage: "camera.viewfinder") {
+            ToolCategorySection(
+                title: "Tools",
+                tools: [.captureSelectedArea, .captureOCR, .imageSearch]
+            )
+
             Form {
-                Section("Placement") {
+                Section("Preview") {
                     Picker("Position", selection: $previewPositionRaw) {
                         ForEach(PreviewPosition.allCases) { position in
                             Text(position.title).tag(position.rawValue)
@@ -137,13 +142,7 @@ struct SettingsView: View {
                         )
                     }
                 }
-            }
-        }
-    }
 
-    private var behaviorPane: some View {
-        SettingsPane {
-            Form {
                 Section("Stack") {
                     Stepper(
                         "Max stack count: \(maxStackCount)",
@@ -164,28 +163,29 @@ struct SettingsView: View {
 
                     Toggle("Never auto-hide", isOn: $neverAutoHide)
                 }
-            }
-        }
-    }
 
-    private var capturePane: some View {
-        SettingsPane {
-            Form {
-                Section("Display") {
+                Section("Capture") {
                     Toggle("Show previews on focused display", isOn: $showPreviewsOnFocusedDisplay)
-                }
 
-                Section("Clipboard") {
                     Toggle("Copy new screenshots to clipboard", isOn: $copyCapturedScreenshotToClipboard)
                 }
-            }
-        }
-    }
 
-    private var exportPane: some View {
-        SettingsPane {
-            Form {
-                Section("Naming") {
+                Section("Export") {
+                    Toggle("Auto-save captured screenshots", isOn: $autoSaveCapturedScreenshots)
+
+                    LabeledContent("Save to") {
+                        HStack(spacing: 8) {
+                            Text(saveDirectoryPath)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+
+                            Button("Choose...") {
+                                chooseSaveDirectory()
+                            }
+                        }
+                    }
+
                     TextField("Prefix", text: $exportFilenamePrefix)
                         .textFieldStyle(.roundedBorder)
 
@@ -206,10 +206,19 @@ struct SettingsView: View {
         }
     }
 
-    private var hotkeyPane: some View {
-        SettingsPane {
+    private var finderPathPane: some View {
+        SettingsPage(title: "Finder Path", systemImage: "folder") {
+            ToolCategorySection(
+                title: "Tool",
+                tools: [.copyFinderPath]
+            )
+        }
+    }
+
+    private var shortcutsPane: some View {
+        SettingsPage(title: "Shortcuts", systemImage: "keyboard") {
             Form {
-                Section("Capture") {
+                Section("Screenshots") {
                     KeyboardShortcuts.Recorder(
                         "Selected area:",
                         name: .captureSelectedArea
@@ -240,6 +249,52 @@ struct SettingsView: View {
         previewDurationSeconds = ScreenshotShelfSettings.clampedPreviewDuration(previewDurationSeconds)
         customThumbnailWidth = ScreenshotShelfSettings.clampedCustomThumbnailWidth(customThumbnailWidth)
     }
+
+    private func chooseSaveDirectory() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = true
+        panel.directoryURL = URL(fileURLWithPath: saveDirectoryPath, isDirectory: true)
+        panel.prompt = "Choose"
+
+        guard panel.runModal() == .OK, let url = panel.url else {
+            return
+        }
+
+        saveDirectoryPath = url.path
+    }
+}
+
+private enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
+    case menuBar
+    case screenshots
+    case finderPath
+    case shortcuts
+
+    var id: Self { self }
+
+    static let appSections: [Self] = [.menuBar, .shortcuts]
+    static let featureSections: [Self] = [.screenshots, .finderPath]
+
+    var title: String {
+        switch self {
+        case .menuBar: "Menu Bar"
+        case .screenshots: "Screenshots"
+        case .finderPath: "Finder Path"
+        case .shortcuts: "Shortcuts"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .menuBar: "menubar.rectangle"
+        case .screenshots: "camera.viewfinder"
+        case .finderPath: "folder"
+        case .shortcuts: "keyboard"
+        }
+    }
 }
 
 private struct SettingsPane<Content: View>: View {
@@ -257,12 +312,31 @@ private struct SettingsPane<Content: View>: View {
     }
 }
 
+private struct SettingsPage<Content: View>: View {
+    let title: String
+    let systemImage: String
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        SettingsPane {
+            VStack(alignment: .leading, spacing: 18) {
+                Label(title, systemImage: systemImage)
+                    .font(.title2.weight(.semibold))
+                    .padding(.horizontal, 4)
+
+                content
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
 private struct MenuLayoutSection: View {
     @Binding var selection: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
-            Text("Menu")
+            Text("Layout")
                 .font(.headline)
                 .foregroundStyle(.primary)
                 .padding(.horizontal, 4)

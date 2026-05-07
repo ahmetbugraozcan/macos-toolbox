@@ -111,6 +111,7 @@ struct ScreenshotShelfView: View {
                 copyAction: { store.copy(item) },
                 copyTextAction: { store.copyRecognizedText(item) },
                 saveAsAction: { store.saveAs(item) },
+                quickSaveAction: { store.quickSave(item) },
                 saveExportAction: { option in store.save(item, exportOption: option) },
                 pinAction: { store.togglePin(item) },
                 openAction: { store.openInPreview(item) },
@@ -404,6 +405,7 @@ private struct ScreenshotThumbnailView: View {
     let copyAction: () -> Void
     let copyTextAction: () -> Void
     let saveAsAction: () -> Void
+    let quickSaveAction: () -> Void
     let saveExportAction: (ScreenshotExportOption) -> Void
     let pinAction: () -> Void
     let openAction: () -> Void
@@ -499,6 +501,14 @@ private struct ScreenshotThumbnailView: View {
             }
 
             Menu {
+                Button {
+                    quickSaveAction()
+                } label: {
+                    Label("Quick Save", systemImage: "square.and.arrow.down")
+                }
+
+                Divider()
+
                 ForEach(exportOptions) { option in
                     Button {
                         saveExportAction(option)

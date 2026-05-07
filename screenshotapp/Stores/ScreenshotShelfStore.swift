@@ -165,14 +165,26 @@ final class ScreenshotShelfStore: ObservableObject {
     }
 
     func saveAs(_ item: ScreenshotItem) {
-        save(
+        saveWithPanel(
             item,
             suggestedFilename: ScreenshotExportNaming.timestampedFilename(for: item.createdAt)
         )
     }
 
+    func quickSave(_ item: ScreenshotItem) {
+        saveToConfiguredDirectory(
+            item,
+            suggestedFilename: ScreenshotExportNaming.timestampedFilename(for: item.createdAt),
+            failureMessage: "Could not quick save image"
+        )
+    }
+
     func save(_ item: ScreenshotItem, exportOption: ScreenshotExportOption) {
-        save(item, suggestedFilename: exportOption.filename)
+        saveToConfiguredDirectory(
+            item,
+            suggestedFilename: exportOption.filename,
+            failureMessage: "Could not save image"
+        )
     }
 
     func openInPreview(_ item: ScreenshotItem) {
@@ -231,7 +243,7 @@ final class ScreenshotShelfStore: ObservableObject {
         return clampedDestinationIndex != sourceIndex
     }
 
-    private func save(_ item: ScreenshotItem, suggestedFilename: String) {
+    private func saveWithPanel(_ item: ScreenshotItem, suggestedFilename: String) {
         do {
             guard let url = try ScreenshotExportService.save(
                 item.image,
@@ -247,6 +259,25 @@ final class ScreenshotShelfStore: ObservableObject {
         }
     }
 
+    private func saveToConfiguredDirectory(
+        _ item: ScreenshotItem,
+        suggestedFilename: String,
+        failureMessage: String
+    ) {
+        do {
+            let settings = ScreenshotShelfSettings.snapshot()
+            let url = try ScreenshotExportService.save(
+                item.image,
+                to: settings.saveDirectoryURL,
+                suggestedFilename: suggestedFilename
+            )
+            showToast("Saved \(url.lastPathComponent)")
+        } catch {
+            NSSound.beep()
+            showToast(failureMessage, systemImage: "exclamationmark.triangle.fill")
+        }
+    }
+
     private func add(_ image: NSImage, screenAnchor: ScreenshotShelfScreenAnchor?) {
         let settings = ScreenshotShelfSettings.snapshot()
         let item = ScreenshotItem(
@@ -259,6 +290,22 @@ final class ScreenshotShelfStore: ObservableObject {
 
         panelController.refresh(screenAnchor: screenAnchor)
         startExpirationTimerIfNeeded(for: item, settings: settings)
+        autoSaveIfNeeded(item, settings: settings)
+    }
+
+    private func autoSaveIfNeeded(
+        _ item: ScreenshotItem,
+        settings: ScreenshotShelfSettingsSnapshot
+    ) {
+        guard settings.autoSaveCapturedScreenshots else {
+            return
+        }
+
+        saveToConfiguredDirectory(
+            item,
+            suggestedFilename: ScreenshotExportNaming.timestampedFilename(for: item.createdAt),
+            failureMessage: "Could not auto-save image"
+        )
     }
 
     private func recognizeAndCopyText(from image: NSImage) {

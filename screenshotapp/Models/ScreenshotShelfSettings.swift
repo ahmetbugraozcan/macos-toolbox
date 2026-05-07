@@ -75,9 +75,15 @@ struct ScreenshotShelfSettingsSnapshot {
     let copyCapturedScreenshotToClipboard: Bool
     let thumbnailSize: ShelfThumbnailSize
     let customThumbnailWidth: Int
+    let autoSaveCapturedScreenshots: Bool
+    let saveDirectoryPath: String
 
     var thumbnailDimensions: CGSize {
         thumbnailSize.size(customWidth: customThumbnailWidth)
+    }
+
+    var saveDirectoryURL: URL {
+        URL(fileURLWithPath: saveDirectoryPath, isDirectory: true)
     }
 }
 
@@ -93,6 +99,8 @@ enum ScreenshotShelfSettings {
         static let copyCapturedScreenshotToClipboard = "copyCapturedScreenshotToClipboard"
         static let thumbnailSize = "thumbnailSize"
         static let customThumbnailWidth = "customThumbnailWidth"
+        static let autoSaveCapturedScreenshots = "autoSaveCapturedScreenshots"
+        static let saveDirectoryPath = "saveDirectoryPath"
         static let exportFilenamePrefix = "exportFilenamePrefix"
         static let exportFilenameVariants = "exportFilenameVariants"
     }
@@ -111,6 +119,11 @@ enum ScreenshotShelfSettings {
     static let defaultCopyCapturedScreenshotToClipboard = false
     static let defaultThumbnailSize = ShelfThumbnailSize.medium
     static let defaultCustomThumbnailWidth = 220
+    static let defaultAutoSaveCapturedScreenshots = true
+    static let defaultSaveDirectoryPath = FileManager.default.urls(
+        for: .desktopDirectory,
+        in: .userDomainMask
+    ).first?.path ?? NSHomeDirectory().appending("/Desktop")
     static let defaultExportFilenamePrefix = ScreenshotExportNaming.defaultPrefix
     static let defaultExportFilenameVariants = ScreenshotExportNaming.defaultVariants
 
@@ -126,6 +139,8 @@ enum ScreenshotShelfSettings {
             Keys.copyCapturedScreenshotToClipboard: defaultCopyCapturedScreenshotToClipboard,
             Keys.thumbnailSize: defaultThumbnailSize.rawValue,
             Keys.customThumbnailWidth: defaultCustomThumbnailWidth,
+            Keys.autoSaveCapturedScreenshots: defaultAutoSaveCapturedScreenshots,
+            Keys.saveDirectoryPath: defaultSaveDirectoryPath,
             Keys.exportFilenamePrefix: defaultExportFilenamePrefix,
             Keys.exportFilenameVariants: defaultExportFilenameVariants
         ])
@@ -146,7 +161,9 @@ enum ScreenshotShelfSettings {
             showPreviewsOnFocusedDisplay: defaults.bool(forKey: Keys.showPreviewsOnFocusedDisplay),
             copyCapturedScreenshotToClipboard: defaults.bool(forKey: Keys.copyCapturedScreenshotToClipboard),
             thumbnailSize: ShelfThumbnailSize(rawValue: thumbnailSizeRaw ?? "") ?? defaultThumbnailSize,
-            customThumbnailWidth: clampedCustomThumbnailWidth(defaults.integer(forKey: Keys.customThumbnailWidth))
+            customThumbnailWidth: clampedCustomThumbnailWidth(defaults.integer(forKey: Keys.customThumbnailWidth)),
+            autoSaveCapturedScreenshots: defaults.bool(forKey: Keys.autoSaveCapturedScreenshots),
+            saveDirectoryPath: saveDirectoryPath(from: defaults)
         )
     }
 
@@ -160,5 +177,12 @@ enum ScreenshotShelfSettings {
 
     static func clampedCustomThumbnailWidth(_ value: Int) -> Int {
         min(max(value, customThumbnailWidthRange.lowerBound), customThumbnailWidthRange.upperBound)
+    }
+
+    private static func saveDirectoryPath(from defaults: UserDefaults) -> String {
+        let path = defaults.string(forKey: Keys.saveDirectoryPath)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        return path.isEmpty ? defaultSaveDirectoryPath : path
     }
 }
