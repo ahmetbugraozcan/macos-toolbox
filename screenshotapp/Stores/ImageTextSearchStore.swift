@@ -50,14 +50,14 @@ final class ImageTextSearchStore: ObservableObject {
 
     var statusText: String {
         guard folderURL != nil else {
-            return "No folder selected"
+            return AppLocalization.string("No folder selected")
         }
 
         if isIndexing {
-            return "\(indexedCount) / \(items.count) indexed"
+            return AppLocalization.formatted("%ld / %ld indexed", indexedCount, items.count)
         }
 
-        return "\(items.count) images"
+        return AppLocalization.formatted("%ld images", items.count)
     }
 
     func chooseFolder() {
@@ -66,7 +66,7 @@ final class ImageTextSearchStore: ObservableObject {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.canCreateDirectories = false
-        panel.prompt = "Choose"
+        panel.prompt = AppLocalization.string("Choose")
 
         guard panel.runModal() == .OK, let url = panel.url else {
             return

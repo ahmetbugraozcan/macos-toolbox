@@ -62,17 +62,17 @@ struct ImageTextSearchView: View {
     private var content: some View {
         if store.folderURL == nil {
             ImageSearchEmptyState(
-                title: "Choose a Folder",
+                title: AppLocalization.string("Choose a Folder"),
                 systemImage: "folder.badge.plus"
             )
         } else if store.items.isEmpty {
             ImageSearchEmptyState(
-                title: "No Images",
+                title: AppLocalization.string("No Images"),
                 systemImage: "photo.stack"
             )
         } else if store.results.isEmpty {
             ImageSearchEmptyState(
-                title: "No Results",
+                title: AppLocalization.string("No Results"),
                 systemImage: "magnifyingglass"
             )
         } else {
@@ -224,13 +224,13 @@ private struct ImageSearchStatusLabel: View {
     private var title: String {
         switch state {
         case .pending:
-            "Queued"
+            AppLocalization.string("Queued")
         case .scanning:
-            "Reading text"
+            AppLocalization.string("Reading text")
         case .indexed:
-            "Indexed"
+            AppLocalization.string("Indexed")
         case .failed:
-            "Unreadable"
+            AppLocalization.string("Unreadable")
         }
     }
 

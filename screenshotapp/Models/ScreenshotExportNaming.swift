@@ -50,7 +50,7 @@ enum ScreenshotExportNaming {
         formatter.calendar = Calendar(identifier: .gregorian)
         formatter.dateFormat = "yyyy-MM-dd-HHmmss"
 
-        return "TinyShotShelf-\(formatter.string(from: date)).png"
+        return "\(AppConstants.appName)-\(formatter.string(from: date)).png"
     }
 
     private static func parsedVariants(from variants: String) -> [String] {

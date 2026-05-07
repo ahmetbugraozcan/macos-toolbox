@@ -14,8 +14,11 @@ struct screenshotappApp: App {
     @Environment(\.openWindow) private var openWindow
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var screenshotStore = ScreenshotShelfStore()
+    @StateObject private var dropShelfStore = DropShelfStore()
     @AppStorage(ToolboxSettings.Keys.menuLayout)
     private var menuLayoutRaw = ToolboxSettings.defaultMenuLayout.rawValue
+    @AppStorage(ToolboxSettings.Keys.language)
+    private var languageRaw = ToolboxSettings.defaultLanguage.rawValue
     @AppStorage(ToolboxSettings.Keys.captureSelectedAreaEnabled)
     private var captureSelectedAreaEnabled = ToolboxSettings.defaultCaptureSelectedAreaEnabled
     @AppStorage(ToolboxSettings.Keys.captureSelectedAreaShowInMenu)
@@ -32,14 +35,19 @@ struct screenshotappApp: App {
     private var imageSearchEnabled = ToolboxSettings.defaultImageSearchEnabled
     @AppStorage(ToolboxSettings.Keys.imageSearchShowInMenu)
     private var imageSearchShowInMenu = ToolboxSettings.defaultImageSearchShowInMenu
+    @AppStorage(ToolboxSettings.Keys.dropShelfEnabled)
+    private var dropShelfEnabled = ToolboxSettings.defaultDropShelfEnabled
+    @AppStorage(ToolboxSettings.Keys.dropShelfShowInMenu)
+    private var dropShelfShowInMenu = ToolboxSettings.defaultDropShelfShowInMenu
 
     init() {
         ScreenshotShelfSettings.registerDefaults()
+        DropShelfSettings.registerDefaults()
         ToolboxSettings.registerDefaults()
     }
 
     var body: some Scene {
-        MenuBarExtra("TinyShotShelf", systemImage: "camera.viewfinder") {
+        MenuBarExtra(AppConstants.displayName, systemImage: "camera.viewfinder") {
             switch selectedMenuLayout {
             case .expanded:
                 expandedMenuContent
@@ -49,21 +57,24 @@ struct screenshotappApp: App {
 
             appMenuFooter
         }
+        .environment(\.locale, selectedLanguage.locale)
 
         Settings {
             SettingsView()
         }
+        .environment(\.locale, selectedLanguage.locale)
 
-        Window("Image Search", id: "image-search") {
+        Window(AppLocalization.string("Image Search"), id: "image-search") {
             ImageTextSearchView()
         }
         .defaultSize(width: 720, height: 500)
+        .environment(\.locale, selectedLanguage.locale)
     }
 
     @ViewBuilder
     private var expandedMenuContent: some View {
         if shouldShowScreenshotActionsInMenu {
-            menuSectionHeader("Screenshots")
+            menuSectionHeader(AppLocalization.string("Screenshots"))
             screenshotToolButtons
 
             if hasVisibleScreenshotTools {
@@ -75,9 +86,9 @@ struct screenshotappApp: App {
             Divider()
         }
 
-        if shouldShowCopyFinderPathInMenu {
-            menuSectionHeader("Files")
-            copyFinderPathButton
+        if shouldShowFileActionsInMenu {
+            menuSectionHeader(AppLocalization.string("Files"))
+            fileToolButtons
             Divider()
         }
     }
@@ -94,14 +105,19 @@ struct screenshotappApp: App {
 
                 screenshotShelfButtons
             } label: {
-                Label("Screenshots", systemImage: "camera.viewfinder")
+                Label(AppLocalization.string("Screenshots"), systemImage: "camera.viewfinder")
             }
 
             Divider()
         }
 
-        if shouldShowCopyFinderPathInMenu {
-            copyFinderPathButton
+        if shouldShowFileActionsInMenu {
+            Menu {
+                fileToolButtons
+            } label: {
+                Label(AppLocalization.string("Files"), systemImage: "folder")
+            }
+
             Divider()
         }
     }
@@ -165,6 +181,49 @@ struct screenshotappApp: App {
     }
 
     @ViewBuilder
+    private var fileToolButtons: some View {
+        if shouldShowCopyFinderPathInMenu {
+            copyFinderPathButton
+        }
+
+        if shouldShowCopyFinderPathInMenu && shouldShowDropShelfInMenu {
+            Divider()
+        }
+
+        if shouldShowDropShelfInMenu {
+            dropShelfButtons
+        }
+    }
+
+    @ViewBuilder
+    private var dropShelfButtons: some View {
+        Button {
+            dropShelfStore.toggleShelf()
+        } label: {
+            Label(
+                dropShelfStore.isShelfVisible
+                    ? AppLocalization.string("Hide Drop Shelf")
+                    : AppLocalization.string("Show Drop Shelf"),
+                systemImage: ToolboxToolID.dropShelf.systemImage
+            )
+        }
+
+        Button {
+            dropShelfStore.sendAll()
+        } label: {
+            Label("Send Shelf Items", systemImage: "paperplane")
+        }
+        .disabled(dropShelfStore.items.isEmpty)
+
+        Button(role: .destructive) {
+            dropShelfStore.clearAll()
+        } label: {
+            Label("Clear Drop Shelf", systemImage: "trash")
+        }
+        .disabled(dropShelfStore.items.isEmpty)
+    }
+
+    @ViewBuilder
     private var appMenuFooter: some View {
         Button {
             NSApp.activate(ignoringOtherApps: true)
@@ -175,13 +234,17 @@ struct screenshotappApp: App {
 
         Divider()
 
-        Button("Quit TinyShotShelf") {
+        Button(AppLocalization.formatted("Quit %@", AppConstants.displayName)) {
             NSApp.terminate(nil)
         }
     }
 
     private var selectedMenuLayout: ToolboxMenuLayout {
         ToolboxMenuLayout(rawValue: menuLayoutRaw) ?? ToolboxSettings.defaultMenuLayout
+    }
+
+    private var selectedLanguage: AppLanguage {
+        AppLanguage(rawValue: languageRaw) ?? ToolboxSettings.defaultLanguage
     }
 
     private func menuSectionHeader(_ title: String) -> some View {
@@ -217,6 +280,14 @@ struct screenshotappApp: App {
 
     private var shouldShowImageSearchInMenu: Bool {
         imageSearchEnabled && imageSearchShowInMenu
+    }
+
+    private var shouldShowDropShelfInMenu: Bool {
+        dropShelfEnabled && dropShelfShowInMenu
+    }
+
+    private var shouldShowFileActionsInMenu: Bool {
+        shouldShowCopyFinderPathInMenu || shouldShowDropShelfInMenu
     }
 }
 

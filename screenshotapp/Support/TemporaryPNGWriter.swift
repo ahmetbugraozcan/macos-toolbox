@@ -6,7 +6,7 @@ enum TemporaryPNGWriter {
             throw CocoaError(.fileWriteUnknown)
         }
 
-        let filename = "TinyShotShelf-\(UUID().uuidString).png"
+        let filename = "\(AppConstants.appName)-\(UUID().uuidString).png"
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
         try pngData.write(to: url, options: .atomic)
         return url

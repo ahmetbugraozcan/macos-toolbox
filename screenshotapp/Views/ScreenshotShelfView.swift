@@ -432,13 +432,13 @@ private struct ScreenshotThumbnailView: View {
             )
             .frame(width: thumbnailSize.width, height: thumbnailSize.height)
             .clipShape(RoundedRectangle(cornerRadius: 14))
-            .help("Open in Preview")
+            .help(Text(AppLocalization.string("Open in Preview")))
 
             VStack {
                 HStack {
                     ThumbnailControlButton(
                         systemName: item.isPinned ? "pin.fill" : "pin",
-                        help: item.isPinned ? "Unpin" : "Pin",
+                        help: item.isPinned ? AppLocalization.string("Unpin") : AppLocalization.string("Pin"),
                         action: pinAction
                     )
 
@@ -446,7 +446,7 @@ private struct ScreenshotThumbnailView: View {
 
                     ThumbnailControlButton(
                         systemName: "xmark",
-                        help: "Close",
+                        help: AppLocalization.string("Close"),
                         action: closeAction
                     )
                 }
@@ -456,7 +456,7 @@ private struct ScreenshotThumbnailView: View {
                 HStack {
                     ThumbnailControlButton(
                         systemName: "pencil",
-                        help: "Edit in Preview",
+                        help: AppLocalization.string("Edit in Preview"),
                         action: openAction
                     )
 
@@ -464,7 +464,7 @@ private struct ScreenshotThumbnailView: View {
 
                     ThumbnailControlButton(
                         systemName: "doc.on.doc",
-                        help: "Copy",
+                        help: AppLocalization.string("Copy"),
                         action: copyAction
                     )
                 }
@@ -531,7 +531,10 @@ private struct ScreenshotThumbnailView: View {
             Button {
                 pinAction()
             } label: {
-                Label(item.isPinned ? "Unpin" : "Pin", systemImage: item.isPinned ? "pin.slash" : "pin")
+                Label(
+                    item.isPinned ? AppLocalization.string("Unpin") : AppLocalization.string("Pin"),
+                    systemImage: item.isPinned ? "pin.slash" : "pin"
+                )
             }
 
             Divider()

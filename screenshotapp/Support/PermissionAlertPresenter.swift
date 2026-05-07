@@ -7,12 +7,14 @@ enum PermissionAlertPresenter {
 
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "Screen Recording Permission Required"
-        alert.informativeText = """
-        Enable TinyShotShelf in System Settings > Privacy & Security > Screen & System Audio Recording, then quit and reopen TinyShotShelf.
-        """
-        alert.addButton(withTitle: "Open Settings")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = AppLocalization.string("Screen Recording Permission Required")
+        alert.informativeText = AppLocalization.formatted(
+            "Enable %@ in System Settings > Privacy & Security > Screen & System Audio Recording, then quit and reopen %@.",
+            AppConstants.displayName,
+            AppConstants.displayName
+        )
+        alert.addButton(withTitle: AppLocalization.string("Open Settings"))
+        alert.addButton(withTitle: AppLocalization.string("Cancel"))
 
         if alert.runModal() == .alertFirstButtonReturn {
             openSettings()

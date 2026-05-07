@@ -6,4 +6,9 @@ extension KeyboardShortcuts.Name {
         "captureSelectedArea",
         default: .init(.two, modifiers: [.command, .shift])
     )
+
+    nonisolated static let openDropShelf = Self(
+        "openDropShelf",
+        default: .init(.d, modifiers: [.command, .shift])
+    )
 }

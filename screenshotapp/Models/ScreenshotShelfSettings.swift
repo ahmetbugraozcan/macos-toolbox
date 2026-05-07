@@ -11,10 +11,10 @@ enum PreviewPosition: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .bottomLeft: "Bottom Left"
-        case .bottomRight: "Bottom Right"
-        case .topLeft: "Top Left"
-        case .topRight: "Top Right"
+        case .bottomLeft: AppLocalization.string("Bottom Left")
+        case .bottomRight: AppLocalization.string("Bottom Right")
+        case .topLeft: AppLocalization.string("Top Left")
+        case .topRight: AppLocalization.string("Top Right")
         }
     }
 }
@@ -27,8 +27,8 @@ enum StackDirection: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .horizontal: "Horizontal"
-        case .vertical: "Vertical"
+        case .horizontal: AppLocalization.string("Horizontal")
+        case .vertical: AppLocalization.string("Vertical")
         }
     }
 }
@@ -43,10 +43,10 @@ enum ShelfThumbnailSize: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .small: "Small"
-        case .medium: "Medium"
-        case .large: "Large"
-        case .custom: "Custom"
+        case .small: AppLocalization.string("Small")
+        case .medium: AppLocalization.string("Medium")
+        case .large: AppLocalization.string("Large")
+        case .custom: AppLocalization.string("Custom")
         }
     }
 
@@ -128,7 +128,17 @@ enum ScreenshotShelfSettings {
     static let defaultExportFilenameVariants = ScreenshotExportNaming.defaultVariants
 
     static func registerDefaults(in defaults: UserDefaults = .standard) {
-        defaults.register(defaults: [
+        defaults.register(defaults: defaultValues)
+    }
+
+    static func resetToDefaults(in defaults: UserDefaults = .standard) {
+        for (key, value) in defaultValues {
+            defaults.set(value, forKey: key)
+        }
+    }
+
+    private static var defaultValues: [String: Any] {
+        [
             Keys.previewPosition: defaultPreviewPosition.rawValue,
             Keys.stackDirection: defaultStackDirection.rawValue,
             Keys.maxStackCount: defaultMaxStackCount,
@@ -143,7 +153,7 @@ enum ScreenshotShelfSettings {
             Keys.saveDirectoryPath: defaultSaveDirectoryPath,
             Keys.exportFilenamePrefix: defaultExportFilenamePrefix,
             Keys.exportFilenameVariants: defaultExportFilenameVariants
-        ])
+        ]
     }
 
     static func snapshot(from defaults: UserDefaults = .standard) -> ScreenshotShelfSettingsSnapshot {

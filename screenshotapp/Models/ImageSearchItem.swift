@@ -31,11 +31,11 @@ struct ImageSearchMatch {
         var labels: [String] = []
 
         if matchedFilename {
-            labels.append("Filename")
+            labels.append(AppLocalization.string("Filename"))
         }
 
         if matchedText {
-            labels.append("Image text")
+            labels.append(AppLocalization.string("Image text"))
         }
 
         return labels

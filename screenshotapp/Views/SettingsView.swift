@@ -47,8 +47,26 @@ struct SettingsView: View {
 
     @AppStorage(ToolboxSettings.Keys.menuLayout)
     private var menuLayoutRaw = ToolboxSettings.defaultMenuLayout.rawValue
+    @AppStorage(ToolboxSettings.Keys.language)
+    private var languageRaw = ToolboxSettings.defaultLanguage.rawValue
+
+    @AppStorage(DropShelfSettings.Keys.itemSize)
+    private var dropShelfItemSizeRaw = DropShelfSettings.defaultItemSize.rawValue
+
+    @AppStorage(DropShelfSettings.Keys.customItemWidth)
+    private var dropShelfCustomItemWidth = DropShelfSettings.defaultCustomItemWidth
+
+    @AppStorage(DropShelfSettings.Keys.maxItemCount)
+    private var dropShelfMaxItemCount = DropShelfSettings.defaultMaxItemCount
+
+    @AppStorage(DropShelfSettings.Keys.openOnShake)
+    private var dropShelfOpenOnShake = DropShelfSettings.defaultOpenOnShake
+
+    @AppStorage(DropShelfSettings.Keys.shakeSensitivity)
+    private var dropShelfShakeSensitivity = DropShelfSettings.defaultShakeSensitivity
 
     @State private var selectedSection: SettingsSection? = .screenshots
+    @StateObject private var permissionStore = PrivacyPermissionStore()
 
     var body: some View {
         NavigationSplitView {
@@ -83,6 +101,15 @@ struct SettingsView: View {
         .onChange(of: customThumbnailWidth) { _, newValue in
             customThumbnailWidth = ScreenshotShelfSettings.clampedCustomThumbnailWidth(newValue)
         }
+        .onChange(of: dropShelfCustomItemWidth) { _, newValue in
+            dropShelfCustomItemWidth = DropShelfSettings.clampedCustomItemWidth(newValue)
+        }
+        .onChange(of: dropShelfMaxItemCount) { _, newValue in
+            dropShelfMaxItemCount = DropShelfSettings.clampedMaxItemCount(newValue)
+        }
+        .onChange(of: dropShelfShakeSensitivity) { _, newValue in
+            dropShelfShakeSensitivity = DropShelfSettings.clampedShakeSensitivity(newValue)
+        }
     }
 
     @ViewBuilder
@@ -92,6 +119,8 @@ struct SettingsView: View {
             menuBarPane
         case .screenshots:
             screenshotsPane
+        case .dropShelf:
+            dropShelfPane
         case .finderPath:
             finderPathPane
         case .shortcuts:
@@ -100,42 +129,60 @@ struct SettingsView: View {
     }
 
     private var menuBarPane: some View {
-        SettingsPage(title: "Menu Bar", systemImage: "menubar.rectangle") {
-            MenuLayoutSection(selection: $menuLayoutRaw)
+        SettingsPage(title: AppLocalization.string("Menu Bar"), systemImage: "menubar.rectangle") {
+            VStack(alignment: .leading, spacing: 24) {
+                LanguageSection(selection: $languageRaw)
+                MenuLayoutSection(selection: $menuLayoutRaw)
+            }
         }
     }
 
     private var screenshotsPane: some View {
-        SettingsPage(title: "Screenshots", systemImage: "camera.viewfinder") {
+        SettingsPage(title: AppLocalization.string("Screenshots"), systemImage: "camera.viewfinder") {
             ToolCategorySection(
-                title: "Tools",
+                title: AppLocalization.string("Tools"),
                 tools: [.captureSelectedArea, .captureOCR, .imageSearch]
             )
 
-            Form {
-                Section("Preview") {
-                    Picker("Position", selection: $previewPositionRaw) {
-                        ForEach(PreviewPosition.allCases) { position in
-                            Text(position.title).tag(position.rawValue)
+            FeaturePermissionManagerView(
+                store: permissionStore,
+                permissions: [.screenRecording]
+            )
+
+            VStack(alignment: .leading, spacing: 24) {
+                SettingsControlSection(title: AppLocalization.string("Preview")) {
+                    SettingsPickerRow(title: AppLocalization.string("Position")) {
+                        Picker(AppLocalization.string("Position"), selection: $previewPositionRaw) {
+                            ForEach(PreviewPosition.allCases) { position in
+                                Text(position.title).tag(position.rawValue)
+                            }
                         }
                     }
 
-                    Picker("Stack direction", selection: $stackDirectionRaw) {
-                        ForEach(StackDirection.allCases) { direction in
-                            Text(direction.title).tag(direction.rawValue)
+                    SettingsSectionDivider()
+
+                    SettingsPickerRow(title: AppLocalization.string("Stack direction")) {
+                        Picker(AppLocalization.string("Stack direction"), selection: $stackDirectionRaw) {
+                            ForEach(StackDirection.allCases) { direction in
+                                Text(direction.title).tag(direction.rawValue)
+                            }
                         }
                     }
                 }
 
-                Section("Thumbnail") {
-                    Picker("Size", selection: $thumbnailSizeRaw) {
-                        ForEach(ShelfThumbnailSize.allCases) { size in
-                            Text(size.title).tag(size.rawValue)
+                SettingsControlSection(title: AppLocalization.string("Thumbnail")) {
+                    SettingsPickerRow(title: AppLocalization.string("Size")) {
+                        Picker(AppLocalization.string("Size"), selection: $thumbnailSizeRaw) {
+                            ForEach(ShelfThumbnailSize.allCases) { size in
+                                Text(size.title).tag(size.rawValue)
+                            }
                         }
+                        .pickerStyle(.menu)
                     }
-                    .pickerStyle(.menu)
 
                     if selectedThumbnailSize == .custom {
+                        SettingsSectionDivider()
+
                         CustomThumbnailSizeControl(
                             width: $customThumbnailWidth,
                             height: customThumbnailHeight
@@ -143,85 +190,234 @@ struct SettingsView: View {
                     }
                 }
 
-                Section("Stack") {
-                    Stepper(
-                        "Max stack count: \(maxStackCount)",
-                        value: $maxStackCount,
-                        in: ScreenshotShelfSettings.maxStackCountRange
-                    )
+                SettingsControlSection(title: AppLocalization.string("Stack")) {
+                    SettingsControlRow(
+                        title: AppLocalization.formatted("Max stack count: %ld", maxStackCount)
+                    ) {
+                        Stepper(
+                            "",
+                            value: $maxStackCount,
+                            in: ScreenshotShelfSettings.maxStackCountRange
+                        )
+                        .labelsHidden()
+                    }
 
-                    Toggle("Pin screenshots by default", isOn: $pinScreenshotsByDefault)
+                    SettingsSectionDivider()
+
+                    SettingsToggleRow(
+                        title: AppLocalization.string("Pin screenshots by default"),
+                        isOn: $pinScreenshotsByDefault
+                    )
                 }
 
-                Section("Auto-hide") {
-                    Stepper(
-                        "Preview duration: \(previewDurationSeconds) sec",
-                        value: $previewDurationSeconds,
-                        in: ScreenshotShelfSettings.previewDurationRange
-                    )
+                SettingsControlSection(title: AppLocalization.string("Auto-hide")) {
+                    SettingsControlRow(
+                        title: AppLocalization.formatted("Preview duration: %ld sec", previewDurationSeconds)
+                    ) {
+                        Stepper(
+                            "",
+                            value: $previewDurationSeconds,
+                            in: ScreenshotShelfSettings.previewDurationRange
+                        )
+                        .labelsHidden()
+                    }
                     .disabled(neverAutoHide)
 
-                    Toggle("Never auto-hide", isOn: $neverAutoHide)
+                    SettingsSectionDivider()
+
+                    SettingsToggleRow(
+                        title: AppLocalization.string("Never auto-hide"),
+                        isOn: $neverAutoHide
+                    )
                 }
 
-                Section("Capture") {
-                    Toggle("Show previews on focused display", isOn: $showPreviewsOnFocusedDisplay)
+                SettingsControlSection(title: AppLocalization.string("Capture")) {
+                    SettingsToggleRow(
+                        title: AppLocalization.string("Show previews on focused display"),
+                        isOn: $showPreviewsOnFocusedDisplay
+                    )
 
-                    Toggle("Copy new screenshots to clipboard", isOn: $copyCapturedScreenshotToClipboard)
+                    SettingsSectionDivider()
+
+                    SettingsToggleRow(
+                        title: AppLocalization.string("Copy new screenshots to clipboard"),
+                        isOn: $copyCapturedScreenshotToClipboard
+                    )
                 }
 
-                Section("Export") {
-                    Toggle("Auto-save captured screenshots", isOn: $autoSaveCapturedScreenshots)
+                SettingsControlSection(title: AppLocalization.string("Export")) {
+                    SettingsToggleRow(
+                        title: AppLocalization.string("Auto-save captured screenshots"),
+                        isOn: $autoSaveCapturedScreenshots
+                    )
 
-                    LabeledContent("Save to") {
+                    SettingsSectionDivider()
+
+                    SettingsControlRow(title: AppLocalization.string("Save to")) {
                         HStack(spacing: 8) {
                             Text(saveDirectoryPath)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
                                 .truncationMode(.middle)
+                                .frame(maxWidth: 260, alignment: .trailing)
 
-                            Button("Choose...") {
+                            Button(AppLocalization.string("Choose...")) {
                                 chooseSaveDirectory()
                             }
                         }
                     }
 
-                    TextField("Prefix", text: $exportFilenamePrefix)
-                        .textFieldStyle(.roundedBorder)
+                    SettingsSectionDivider()
 
-                    TextField("Variants", text: $exportFilenameVariants)
-                        .textFieldStyle(.roundedBorder)
+                    SettingsControlRow(title: AppLocalization.string("Prefix")) {
+                        TextField(AppLocalization.string("Prefix"), text: $exportFilenamePrefix)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 240)
+                    }
+
+                    SettingsSectionDivider()
+
+                    SettingsControlRow(title: AppLocalization.string("Variants")) {
+                        TextField(AppLocalization.string("Variants"), text: $exportFilenameVariants)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 240)
+                    }
                 }
 
-                Section("Generated names") {
+                SettingsControlSection(title: AppLocalization.string("Generated names")) {
                     ForEach(exportOptions) { option in
-                        LabeledContent(option.variant ?? "Default") {
+                        SettingsControlRow(title: option.variant ?? AppLocalization.string("Default")) {
                             Text(option.filename)
                                 .monospaced()
                                 .foregroundStyle(.secondary)
                         }
+
+                        if option.id != exportOptions.last?.id {
+                            SettingsSectionDivider()
+                        }
                     }
                 }
+            }
+
+            FeatureResetSection {
+                resetScreenshotSettings()
             }
         }
     }
 
     private var finderPathPane: some View {
-        SettingsPage(title: "Finder Path", systemImage: "folder") {
+        SettingsPage(title: AppLocalization.string("Finder Path"), systemImage: "folder") {
             ToolCategorySection(
-                title: "Tool",
+                title: AppLocalization.string("Tool"),
                 tools: [.copyFinderPath]
             )
+
+            FeaturePermissionManagerView(
+                store: permissionStore,
+                permissions: [.finderAutomation]
+            )
+
+            FeatureResetSection {
+                resetFinderPathSettings()
+            }
+        }
+    }
+
+    private var dropShelfPane: some View {
+        SettingsPage(title: AppLocalization.string("Drop Shelf"), systemImage: "tray.and.arrow.down") {
+            ToolCategorySection(
+                title: AppLocalization.string("Tool"),
+                tools: [.dropShelf]
+            )
+
+            FeaturePermissionManagerView(
+                store: permissionStore,
+                permissions: [.accessibility]
+            )
+
+            VStack(alignment: .leading, spacing: 24) {
+                SettingsControlSection(title: AppLocalization.string("Layout")) {
+                    SettingsPickerRow(title: AppLocalization.string("Item size")) {
+                        Picker(AppLocalization.string("Item size"), selection: $dropShelfItemSizeRaw) {
+                            ForEach(DropShelfItemSize.allCases) { size in
+                                Text(size.title).tag(size.rawValue)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                    }
+
+                    if selectedDropShelfItemSize == .custom {
+                        SettingsSectionDivider()
+
+                        CustomDropShelfItemSizeControl(
+                            width: $dropShelfCustomItemWidth,
+                            height: dropShelfCustomItemHeight
+                        )
+                    }
+                }
+
+                SettingsControlSection(title: AppLocalization.string("Capacity")) {
+                    SettingsControlRow(
+                        title: AppLocalization.formatted("Max item count: %ld", dropShelfMaxItemCount)
+                    ) {
+                        Stepper(
+                            "",
+                            value: $dropShelfMaxItemCount,
+                            in: DropShelfSettings.maxItemCountRange
+                        )
+                        .labelsHidden()
+                    }
+                }
+
+                SettingsControlSection(title: AppLocalization.string("Shake")) {
+                    SettingsToggleRow(
+                        title: AppLocalization.string("Open shelf when shaking"),
+                        isOn: $dropShelfOpenOnShake
+                    )
+
+                    SettingsSectionDivider()
+
+                    SettingsControlRow(
+                        title: AppLocalization.formatted("Sensitivity: %ld", dropShelfShakeSensitivity)
+                    ) {
+                        HStack(spacing: 8) {
+                            Text("\(DropShelfSettings.shakeSensitivityRange.lowerBound)")
+                            Slider(
+                                value: dropShelfShakeSensitivityBinding,
+                                in: Double(DropShelfSettings.shakeSensitivityRange.lowerBound)...Double(DropShelfSettings.shakeSensitivityRange.upperBound),
+                                step: 1
+                            )
+                            .frame(width: 190)
+                            Text("\(DropShelfSettings.shakeSensitivityRange.upperBound)")
+                        }
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                    }
+                    .disabled(!dropShelfOpenOnShake)
+                }
+            }
+
+            FeatureResetSection {
+                resetDropShelfSettings()
+            }
         }
     }
 
     private var shortcutsPane: some View {
-        SettingsPage(title: "Shortcuts", systemImage: "keyboard") {
+        SettingsPage(title: AppLocalization.string("Shortcuts"), systemImage: "keyboard") {
             Form {
                 Section("Screenshots") {
                     KeyboardShortcuts.Recorder(
-                        "Selected area:",
+                        AppLocalization.string("Selected area:"),
                         name: .captureSelectedArea
+                    )
+                }
+
+                Section("Files") {
+                    KeyboardShortcuts.Recorder(
+                        AppLocalization.string("Drop shelf:"),
+                        name: .openDropShelf
                     )
                 }
             }
@@ -237,6 +433,23 @@ struct SettingsView: View {
         return Int(ShelfThumbnailSize.size(forWidth: CGFloat(width)).height)
     }
 
+    private var selectedDropShelfItemSize: DropShelfItemSize {
+        DropShelfItemSize(rawValue: dropShelfItemSizeRaw) ?? DropShelfSettings.defaultItemSize
+    }
+
+    private var dropShelfCustomItemHeight: Int {
+        let width = DropShelfSettings.clampedCustomItemWidth(dropShelfCustomItemWidth)
+        return Int(DropShelfItemSize.size(forWidth: CGFloat(width)).height)
+    }
+
+    private var dropShelfShakeSensitivityBinding: Binding<Double> {
+        Binding {
+            Double(dropShelfShakeSensitivity)
+        } set: { newValue in
+            dropShelfShakeSensitivity = DropShelfSettings.clampedShakeSensitivity(Int(newValue.rounded()))
+        }
+    }
+
     private var exportOptions: [ScreenshotExportOption] {
         ScreenshotExportNaming.options(
             prefix: exportFilenamePrefix,
@@ -248,6 +461,9 @@ struct SettingsView: View {
         maxStackCount = ScreenshotShelfSettings.clampedMaxStackCount(maxStackCount)
         previewDurationSeconds = ScreenshotShelfSettings.clampedPreviewDuration(previewDurationSeconds)
         customThumbnailWidth = ScreenshotShelfSettings.clampedCustomThumbnailWidth(customThumbnailWidth)
+        dropShelfCustomItemWidth = DropShelfSettings.clampedCustomItemWidth(dropShelfCustomItemWidth)
+        dropShelfMaxItemCount = DropShelfSettings.clampedMaxItemCount(dropShelfMaxItemCount)
+        dropShelfShakeSensitivity = DropShelfSettings.clampedShakeSensitivity(dropShelfShakeSensitivity)
     }
 
     private func chooseSaveDirectory() {
@@ -257,7 +473,7 @@ struct SettingsView: View {
         panel.canChooseFiles = false
         panel.canCreateDirectories = true
         panel.directoryURL = URL(fileURLWithPath: saveDirectoryPath, isDirectory: true)
-        panel.prompt = "Choose"
+        panel.prompt = AppLocalization.string("Choose")
 
         guard panel.runModal() == .OK, let url = panel.url else {
             return
@@ -265,25 +481,43 @@ struct SettingsView: View {
 
         saveDirectoryPath = url.path
     }
+
+    private func resetScreenshotSettings() {
+        ScreenshotShelfSettings.resetToDefaults()
+        ToolboxSettings.resetTools([.captureSelectedArea, .captureOCR, .imageSearch])
+        KeyboardShortcuts.reset(.captureSelectedArea)
+    }
+
+    private func resetFinderPathSettings() {
+        ToolboxSettings.resetTools([.copyFinderPath])
+    }
+
+    private func resetDropShelfSettings() {
+        DropShelfSettings.resetToDefaults()
+        ToolboxSettings.resetTools([.dropShelf])
+        KeyboardShortcuts.reset(.openDropShelf)
+    }
 }
 
 private enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
     case menuBar
     case screenshots
+    case dropShelf
     case finderPath
     case shortcuts
 
     var id: Self { self }
 
     static let appSections: [Self] = [.menuBar, .shortcuts]
-    static let featureSections: [Self] = [.screenshots, .finderPath]
+    static let featureSections: [Self] = [.screenshots, .dropShelf, .finderPath]
 
     var title: String {
         switch self {
-        case .menuBar: "Menu Bar"
-        case .screenshots: "Screenshots"
-        case .finderPath: "Finder Path"
-        case .shortcuts: "Shortcuts"
+        case .menuBar: AppLocalization.string("Menu Bar")
+        case .screenshots: AppLocalization.string("Screenshots")
+        case .dropShelf: AppLocalization.string("Drop Shelf")
+        case .finderPath: AppLocalization.string("Finder Path")
+        case .shortcuts: AppLocalization.string("Shortcuts")
         }
     }
 
@@ -291,6 +525,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .menuBar: "menubar.rectangle"
         case .screenshots: "camera.viewfinder"
+        case .dropShelf: "tray.and.arrow.down"
         case .finderPath: "folder"
         case .shortcuts: "keyboard"
         }
@@ -372,6 +607,23 @@ private struct MenuLayoutSection: View {
 
     private var selectedLayout: ToolboxMenuLayout {
         ToolboxMenuLayout(rawValue: selection) ?? ToolboxSettings.defaultMenuLayout
+    }
+}
+
+private struct LanguageSection: View {
+    @Binding var selection: String
+
+    var body: some View {
+        SettingsControlSection(title: AppLocalization.string("Language")) {
+            SettingsPickerRow(title: AppLocalization.string("App language")) {
+                Picker(AppLocalization.string("App language"), selection: $selection) {
+                    ForEach(AppLanguage.allCases) { language in
+                        Text(language.title).tag(language.rawValue)
+                    }
+                }
+                .pickerStyle(.menu)
+            }
+        }
     }
 }
 
@@ -478,6 +730,104 @@ private struct ToolSettingsRow: View {
     }
 }
 
+private struct SettingsControlSection<Content: View>: View {
+    let title: String
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            Text(title)
+                .font(.headline)
+                .foregroundStyle(.primary)
+                .padding(.horizontal, 4)
+
+            VStack(spacing: 0) {
+                content
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 12))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct SettingsControlRow<Content: View>: View {
+    let title: String
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        HStack(spacing: 16) {
+            Text(title)
+                .font(.system(size: 13, weight: .medium))
+
+            Spacer(minLength: 18)
+
+            content
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct SettingsPickerRow<Content: View>: View {
+    let title: String
+    @ViewBuilder var picker: Content
+
+    var body: some View {
+        SettingsControlRow(title: title) {
+            picker
+                .labelsHidden()
+                .frame(width: 190)
+        }
+    }
+}
+
+private struct SettingsToggleRow: View {
+    let title: String
+    @Binding var isOn: Bool
+
+    var body: some View {
+        SettingsControlRow(title: title) {
+            Toggle("", isOn: $isOn)
+                .toggleStyle(.switch)
+                .labelsHidden()
+        }
+    }
+}
+
+private struct SettingsSectionDivider: View {
+    var body: some View {
+        Divider()
+            .padding(.leading, 20)
+    }
+}
+
+private struct FeatureResetSection: View {
+    let resetAction: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            Text("Reset Settings")
+                .font(.headline)
+                .foregroundStyle(.primary)
+                .padding(.horizontal, 4)
+
+            HStack(spacing: 14) {
+                Spacer()
+
+                Button(role: .destructive) {
+                    resetAction()
+                } label: {
+                    Label("Reset All Settings", systemImage: "arrow.counterclockwise")
+                }
+            }
+            .padding(14)
+            .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 12))
+        }
+    }
+}
+
 private struct CustomThumbnailSizeControl: View {
     @Binding var width: Int
     let height: Int
@@ -492,14 +842,14 @@ private struct CustomThumbnailSizeControl: View {
 
     var body: some View {
         Group {
-            LabeledContent("Dimensions") {
+            SettingsControlRow(title: AppLocalization.string("Dimensions")) {
                 HStack(spacing: 8) {
                     TextField("", value: $width, format: .number)
                         .frame(width: 72)
                         .multilineTextAlignment(.trailing)
                         .textFieldStyle(.roundedBorder)
 
-                    Text("x \(height) px")
+                    Text(AppLocalization.formatted("x %ld px", height))
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
 
@@ -512,7 +862,9 @@ private struct CustomThumbnailSizeControl: View {
                 }
             }
 
-            LabeledContent("Width") {
+            SettingsSectionDivider()
+
+            SettingsControlRow(title: AppLocalization.string("Width")) {
                 HStack(spacing: 8) {
                     Text("\(ScreenshotShelfSettings.customThumbnailWidthRange.lowerBound)")
                     Slider(
@@ -521,6 +873,60 @@ private struct CustomThumbnailSizeControl: View {
                     )
                     .frame(width: 190)
                     Text("\(ScreenshotShelfSettings.customThumbnailWidthRange.upperBound)")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+            }
+        }
+    }
+}
+
+private struct CustomDropShelfItemSizeControl: View {
+    @Binding var width: Int
+    let height: Int
+
+    private var widthSliderValue: Binding<Double> {
+        Binding {
+            Double(width)
+        } set: { newValue in
+            width = DropShelfSettings.clampedCustomItemWidth(Int(newValue.rounded()))
+        }
+    }
+
+    var body: some View {
+        Group {
+            SettingsControlRow(title: AppLocalization.string("Dimensions")) {
+                HStack(spacing: 8) {
+                    TextField("", value: $width, format: .number)
+                        .frame(width: 72)
+                        .multilineTextAlignment(.trailing)
+                        .textFieldStyle(.roundedBorder)
+
+                    Text(AppLocalization.formatted("x %ld px", height))
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+
+                    Stepper(
+                        "",
+                        value: $width,
+                        in: DropShelfSettings.customItemWidthRange
+                    )
+                    .labelsHidden()
+                }
+            }
+
+            SettingsSectionDivider()
+
+            SettingsControlRow(title: AppLocalization.string("Width")) {
+                HStack(spacing: 8) {
+                    Text("\(DropShelfSettings.customItemWidthRange.lowerBound)")
+                    Slider(
+                        value: widthSliderValue,
+                        in: Double(DropShelfSettings.customItemWidthRange.lowerBound)...Double(DropShelfSettings.customItemWidthRange.upperBound)
+                    )
+                    .frame(width: 190)
+                    Text("\(DropShelfSettings.customItemWidthRange.upperBound)")
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)

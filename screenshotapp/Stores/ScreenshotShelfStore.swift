@@ -133,13 +133,13 @@ final class ScreenshotShelfStore: ObservableObject {
             copyPathToPasteboard(path)
         } catch FinderPathService.FinderPathError.noOpenFinderWindow {
             NSSound.beep()
-            showToast("No Finder window open", systemImage: "exclamationmark.triangle.fill")
+            showToast(AppLocalization.string("No Finder window open"), systemImage: "exclamationmark.triangle.fill")
         } catch FinderPathService.FinderPathError.automationDenied {
             NSSound.beep()
-            showToast("Allow Finder access", systemImage: "exclamationmark.triangle.fill")
+            showToast(AppLocalization.string("Allow Finder access"), systemImage: "exclamationmark.triangle.fill")
         } catch {
             NSSound.beep()
-            showToast("Could not copy path", systemImage: "exclamationmark.triangle.fill")
+            showToast(AppLocalization.string("Could not copy path"), systemImage: "exclamationmark.triangle.fill")
         }
     }
 
@@ -175,7 +175,7 @@ final class ScreenshotShelfStore: ObservableObject {
         saveToConfiguredDirectory(
             item,
             suggestedFilename: ScreenshotExportNaming.timestampedFilename(for: item.createdAt),
-            failureMessage: "Could not quick save image"
+            failureMessage: AppLocalization.string("Could not quick save image")
         )
     }
 
@@ -183,7 +183,7 @@ final class ScreenshotShelfStore: ObservableObject {
         saveToConfiguredDirectory(
             item,
             suggestedFilename: exportOption.filename,
-            failureMessage: "Could not save image"
+            failureMessage: AppLocalization.string("Could not save image")
         )
     }
 
@@ -252,10 +252,10 @@ final class ScreenshotShelfStore: ObservableObject {
                 return
             }
 
-            showToast("Saved \(url.lastPathComponent)")
+            showToast(AppLocalization.formatted("Saved %@", url.lastPathComponent))
         } catch {
             NSSound.beep()
-            showToast("Could not save image", systemImage: "exclamationmark.triangle.fill")
+            showToast(AppLocalization.string("Could not save image"), systemImage: "exclamationmark.triangle.fill")
         }
     }
 
@@ -271,7 +271,7 @@ final class ScreenshotShelfStore: ObservableObject {
                 to: settings.saveDirectoryURL,
                 suggestedFilename: suggestedFilename
             )
-            showToast("Saved \(url.lastPathComponent)")
+            showToast(AppLocalization.formatted("Saved %@", url.lastPathComponent))
         } catch {
             NSSound.beep()
             showToast(failureMessage, systemImage: "exclamationmark.triangle.fill")
@@ -304,7 +304,7 @@ final class ScreenshotShelfStore: ObservableObject {
         saveToConfiguredDirectory(
             item,
             suggestedFilename: ScreenshotExportNaming.timestampedFilename(for: item.createdAt),
-            failureMessage: "Could not auto-save image"
+            failureMessage: AppLocalization.string("Could not auto-save image")
         )
     }
 
@@ -329,11 +329,11 @@ final class ScreenshotShelfStore: ObservableObject {
 
         guard pasteboard.setString(text, forType: .string) else {
             NSSound.beep()
-            showToast("Could not copy text", systemImage: "exclamationmark.triangle.fill")
+            showToast(AppLocalization.string("Could not copy text"), systemImage: "exclamationmark.triangle.fill")
             return
         }
 
-        showToast("Copied to clipboard")
+        showToast(AppLocalization.string("Copied to clipboard"))
     }
 
     private func copyPathToPasteboard(_ path: String) {
@@ -342,11 +342,11 @@ final class ScreenshotShelfStore: ObservableObject {
 
         guard pasteboard.setString(path, forType: .string) else {
             NSSound.beep()
-            showToast("Could not copy path", systemImage: "exclamationmark.triangle.fill")
+            showToast(AppLocalization.string("Could not copy path"), systemImage: "exclamationmark.triangle.fill")
             return
         }
 
-        showToast("Path copied")
+        showToast(AppLocalization.string("Path copied"))
     }
 
     private func handleOCRFailure(_ error: Error) {
@@ -355,12 +355,12 @@ final class ScreenshotShelfStore: ObservableObject {
         if let recognitionError = error as? OCRTextRecognitionError {
             switch recognitionError {
             case .noTextFound:
-                showToast("No text found", systemImage: "exclamationmark.triangle.fill")
+                showToast(AppLocalization.string("No text found"), systemImage: "exclamationmark.triangle.fill")
             case .imageConversionFailed:
-                showToast("Could not read image", systemImage: "exclamationmark.triangle.fill")
+                showToast(AppLocalization.string("Could not read image"), systemImage: "exclamationmark.triangle.fill")
             }
         } else {
-            showToast("OCR failed", systemImage: "exclamationmark.triangle.fill")
+            showToast(AppLocalization.string("OCR failed"), systemImage: "exclamationmark.triangle.fill")
         }
     }
 

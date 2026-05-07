@@ -10,13 +10,13 @@ enum FinderPathService {
         var errorDescription: String? {
             switch self {
             case .scriptCreationFailed:
-                "Could not prepare Finder request."
+                AppLocalization.string("Could not prepare Finder request.")
             case .scriptFailed(let message):
                 message
             case .noOpenFinderWindow:
-                "No Finder window is open."
+                AppLocalization.string("No Finder window is open.")
             case .automationDenied:
-                "Finder access is not allowed."
+                AppLocalization.string("Finder access is not allowed.")
             }
         }
     }
